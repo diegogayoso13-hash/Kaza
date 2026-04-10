@@ -1356,12 +1356,6 @@ tr:last-child td { border: none; }
       <div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px" data-i18n="ob_paso2_num">Paso 2 de 3</div>
       <div style="font-size:22px;font-weight:600;color:#fff;margin-bottom:8px;line-height:1.3" data-i18n="ob_desde_mes">¿Desde qué mes arrancás?</div>
       <div style="font-size:14px;color:#666;margin-bottom:24px;line-height:1.6" data-i18n="ob_mes_desc">Podés agregar meses anteriores después desde Ajustes.</div>
-      <div style="margin-bottom:16px">
-        <div style="font-size:11px;color:#555;margin-bottom:6px"><span data-i18n="ob_codigo_personal">Tu código personal</span> <span style="color:#1a6fd4">*</span></div>
-        <input type="text" id="ob-user-code" placeholder="Ej: diego2026" autocomplete="off" autocapitalize="none"
-          style="width:100%;background:#111;border:0.5px solid #222;border-radius:10px;color:#fff;font-size:15px;padding:12px;outline:none">
-        <div style="font-size:11px;color:#444;margin-top:5px" data-i18n="ob_codigo_hint">Sin espacios. Usalo siempre para acceder a tus datos desde cualquier dispositivo.</div>
-      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
         <div>
           <div style="font-size:11px;color:#555;margin-bottom:6px" data-i18n="lbl_mes">Mes</div>
@@ -1888,16 +1882,7 @@ tr:last-child td { border: none; }
 
       
 
-      <div class="card">
-        <div class="card-title"><span data-i18n="card_codigo">Tu código personal</span></div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5" data-i18n="lbl_codigo_desc">Este código identifica tus datos en la nube. Usalo en todos tus dispositivos.</div>
-        <div id="user-code-display" style="background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);padding:12px;font-size:15px;font-family:'DM Mono',monospace;color:var(--teal);margin-bottom:10px">finko_user</div>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="aj-user-code" placeholder="Nuevo código..." autocapitalize="none"
-            style="flex:1;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;outline:none">
-          <button class="btn" onclick="cambiarCodigo()" style="padding:10px 14px;font-size:14px"><span data-i18n="btn_cambiar">Cambiar</span></button>
-        </div>
-      </div>
+      
 
       <div class="card">
         <div class="card-title"><span data-i18n="card_datos">Datos de la app</span></div>
@@ -1913,7 +1898,7 @@ tr:last-child td { border: none; }
         <div class="card-title"><span data-i18n="card_idioma">Idioma</span></div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5"><span data-i18n="lbl_idioma_desc">Cambiá el idioma de la app.</span></div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-          <button onclick="setLang('es')" id="lang-btn-es" style="padding:10px;border-radius:var(--r-sm);border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s">🇦🇷 Español</button>
+          <button onclick="setLang('es')" id="lang-btn-es" style="padding:10px;border-radius:var(--r-sm);border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s">🇪🇸 Español</button>
           <button onclick="setLang('en')" id="lang-btn-en" style="padding:10px;border-radius:var(--r-sm);border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s">🇺🇸 English</button>
           <button onclick="setLang('pt')" id="lang-btn-pt" style="padding:10px;border-radius:var(--r-sm);border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s">🇧🇷 Português</button>
         </div>
@@ -2144,12 +2129,8 @@ let obModo = null;
 
 
 
-const MONTHS_DEFAULT = [
-  'Abril 2025','Mayo 2025','Junio 2025','Julio 2025','Agosto 2025',
-  'Septiembre 2025','Octubre 2025','Noviembre 2025','Diciembre 2025',
-  'Enero 2026','Febrero 2026','Marzo 2026'
-];
-let MONTHS = [...MONTHS_DEFAULT];
+const MONTHS_DEFAULT = [];
+let MONTHS = [];
 
 const HIST = {};
 
@@ -3318,10 +3299,13 @@ function obSelectModo(modo) {
 }
 
 function obFinish() {
-  const rawCode = document.getElementById('ob-user-code')?.value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');
-  const userCode = rawCode || ('user' + Date.now().toString(36));
-  USER_ID = userCode;
-  localStorage.setItem('finko_user_id', userCode);
+  // Only set USER_ID if not already logged in via email
+  if(!currentUser) {
+    const rawCode = document.getElementById('ob-user-code')?.value?.trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+    const userCode = rawCode || ('user' + Date.now().toString(36));
+    USER_ID = userCode;
+    localStorage.setItem('finko_user_id', userCode);
+  }
   const mes = document.getElementById('ob-mes')?.value;
   const anio = document.getElementById('ob-anio')?.value;
   if(mes && anio) {
@@ -3919,6 +3903,9 @@ function initSupabaseAuth() {
   if(typeof window.supabase !== 'undefined' && window.supabase.createClient) {
     supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
     checkAuthSession();
+  } else {
+    // SDK not loaded yet, retry
+    setTimeout(initSupabaseAuth, 200);
   }
 }
 async function checkAuthSession() {
