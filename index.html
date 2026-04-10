@@ -3916,11 +3916,21 @@ async function checkAuthSession() {
   } catch(e) {}
 }
 async function loginEmail(email, password) {
-  if(!supabaseClient) { toast(t('sync_error')); return false; }
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if(error) { toast(error.message.includes('Invalid') ? t('auth_error_invalid') : error.message); return false; }
-  currentUser = data.user; USER_ID = data.user.id; localStorage.setItem('finko_user_id', USER_ID);
-  onAuthSuccess(); return true;
+  if(!supabaseClient) { 
+    console.error('supabaseClient is null');
+    toast(t('sync_error')); 
+    return false; 
+  }
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if(error) { toast(error.message.includes('Invalid') ? t('auth_error_invalid') : error.message); return false; }
+    currentUser = data.user; USER_ID = data.user.id; localStorage.setItem('finko_user_id', USER_ID);
+    onAuthSuccess(); return true;
+  } catch(e) {
+    console.error('loginEmail error:', e);
+    toast('Error de conexión: ' + e.message);
+    return false;
+  }
 }
 async function registerEmail(email, password) {
   if(!supabaseClient) { toast(t('sync_error')); return false; }
@@ -3933,11 +3943,16 @@ async function logout() {
   currentUser = null; showLoginScreen();
 }
 function onAuthSuccess() {
-  hideLoginScreen(); cloudLoad();
-  const c = document.getElementById('card-auth-ajustes'); if(c) c.style.display='block';
-  const e = document.getElementById('auth-user-email'); if(e && currentUser) e.textContent='📧 '+currentUser.email;
-  // Check if user needs onboarding
-  if(!localStorage.getItem('finko_onboarded')) obInit();
+  try {
+    hideLoginScreen(); 
+    cloudLoad();
+    const c = document.getElementById('card-auth-ajustes'); if(c) c.style.display='block';
+    const e = document.getElementById('auth-user-email'); if(e && currentUser) e.textContent='📧 '+currentUser.email;
+    if(!localStorage.getItem('finko_onboarded')) obInit();
+  } catch(e) {
+    console.error('onAuthSuccess error:', e);
+    hideLoginScreen();
+  }
 }
 function showLoginScreen() {
   const ls = document.getElementById('login-screen'); if(ls) { ls.style.display='flex'; ls.style.alignItems='center'; ls.style.justifyContent='center'; }
@@ -3964,8 +3979,14 @@ async function doLogin() {
   const pass = document.getElementById('auth-pass')?.value;
   if(!email||!pass){ toast(t('toast_campos')); return; }
   const btn = document.getElementById('auth-login-btn'); if(btn){btn.disabled=true;btn.textContent='...';}
-  await loginEmail(email, pass);
-  if(btn){btn.disabled=false;btn.textContent=t('auth_login');}
+  try {
+    const ok = await loginEmail(email, pass);
+    if(!ok && btn){btn.disabled=false;btn.textContent=t('auth_login');}
+  } catch(e) {
+    console.error('doLogin error:', e);
+    toast('Error: ' + e.message);
+    if(btn){btn.disabled=false;btn.textContent=t('auth_login');}
+  }
 }
 async function doRegister() {
   const email = document.getElementById('auth-email')?.value.trim();
