@@ -2298,6 +2298,7 @@ function pickMes(m) {
 
 /* ── KPIs ───────────────────────────────────────────────────────────────── */
 function renderKPIs() {
+  if(!selMes) return;
   const d = getMesData(selMes);
   const tasa = d.sueldo && d.ahorro != null ? d.ahorro/d.sueldo : null;
   document.getElementById('k-ing').textContent = fmt(d.sueldo);
@@ -2331,6 +2332,7 @@ function getCatLabel(cat) {
   return map[cat] || cat;
 }
 function getMonthAbbr(m) {
+  if(!m) return '';
   const shortMap = {
     es: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
     en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
@@ -2349,6 +2351,7 @@ function getMonthAbbr(m) {
   return idx>=0 ? shorts[idx] : parts[0].substring(0,3);
 }
 function getMonthDisplay(m) {
+  if(!m) return '';
   const fullMap = {
     es: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
     en: ['January','February','March','April','May','June','July','August','September','October','November','December'],
@@ -3425,6 +3428,8 @@ function verOnboarding() {
 /* ── SUPABASE SYNC ───────────────────────────────────────────────────────── */
 const SB_URL = 'https://zfoetyauhauztkkltjaz.supabase.co';
 const SB_KEY = 'sb_publishable_v46DhQgi48QpamiqYzMfwQ_7wrKKLc0';
+var supabaseClient = null;
+var currentUser = null;
 let USER_ID = (localStorage.getItem('finko_user_id') || 'finko_user').toLowerCase().replace(/[^a-z0-9_]/g,'') || 'finko_user';
 let _dot = null;
 
@@ -3896,8 +3901,6 @@ function guardarPresupuestoGeneral() {
 
 
 /* ── AUTH — Supabase Email/Password ──────────────────────────────────────── */
-let currentUser = null;
-let supabaseClient = null;
 
 function initSupabaseAuth() {
   if(typeof window.supabase !== 'undefined' && window.supabase.createClient) {
