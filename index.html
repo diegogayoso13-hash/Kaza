@@ -317,6 +317,7 @@ const LANG = {
     toast_mes_ya_existe: 'Ese mes ya existe',
     toast_mes_agregado: 'agregado ✓',
     toast_mes_eliminado: 'eliminado',
+    confirm_eliminar_mes: '¿Seguro que querés eliminar este mes?',
     confirm_borrar_datos: '¿Borrar todos los gastos y sueldos cargados? Los meses y datos históricos no se tocan.',
     toast_datos_borrados: 'Datos borrados',
     msg_sin_subcats: 'Sin subcategorías. Agregá una arriba.',
@@ -625,6 +626,7 @@ const LANG = {
     toast_mes_ya_existe: 'That month already exists',
     toast_mes_agregado: 'added ✓',
     toast_mes_eliminado: 'deleted',
+    confirm_eliminar_mes: 'Are you sure you want to delete this month?',
     confirm_borrar_datos: 'Delete all expenses and income logged? Base months and historical data are not affected.',
     toast_datos_borrados: 'Data deleted',
     msg_sin_subcats: 'No subcategories. Add one above.',
@@ -929,6 +931,7 @@ const LANG = {
     toast_mes_ya_existe: 'Esse mês já existe',
     toast_mes_agregado: 'adicionado ✓',
     toast_mes_eliminado: 'excluído',
+    confirm_eliminar_mes: 'Tem certeza que deseja excluir este mês?',
     confirm_borrar_datos: 'Apagar todos os gastos e rendas registrados? Meses base e dados históricos não são afetados.',
     toast_datos_borrados: 'Dados apagados',
     msg_sin_subcats: 'Sem subcategorias. Adicione uma acima.',
@@ -2845,12 +2848,14 @@ function eliminarMes(i) {
   if(MONTHS_DEFAULT.includes(m)) { toast(t('toast_no_eliminar_base')); return; }
   const tieneGastos = DATA.gastos.some(g => g.mes === m);
   if(tieneGastos) { toast(t('toast_mes_con_gastos')); return; }
+  const label = getMonthDisplay(m) || m;
+  if(!confirm(t('confirm_eliminar_mes') || '¿Eliminar ' + label + '?')) return;
   MONTHS.splice(i, 1);
   if(selMes === m) selMes = MONTHS[MONTHS.length - 1];
   save();
   refreshAll();
   renderAjustes();
-  toast(`${m} ${t('toast_mes_eliminado')}`);
+  toast(`${label} ${t('toast_mes_eliminado')}`);
 }
 
 function refreshAll() {
