@@ -357,7 +357,7 @@ const LANG = {
     auth_login: 'Iniciar sesión', auth_register: 'Crear cuenta', auth_password: 'Contraseña',
     auth_logout: 'Cerrar sesión', auth_skip: 'Continuar sin cuenta',
     auth_error_invalid: 'Email o contraseña incorrectos',
-    auth_check_email: 'Revisá tu email para confirmar', auth_pass_short: 'Mínimo 6 caracteres',
+    auth_check_email: 'Revisá tu email para confirmar', auth_register_ok: '¡Cuenta creada!', auth_pass_short: 'Mínimo 6 caracteres',
     // Privacy
     card_privacidad: 'Privacidad y datos', card_tutorial: 'Tutorial', card_sesion: 'Sesión',
     priv_desc: 'Tus datos se almacenan de forma segura. Podés solicitar eliminación en cualquier momento.',
@@ -671,7 +671,7 @@ const LANG = {
     auth_login: 'Sign in', auth_register: 'Create account', auth_password: 'Password',
     auth_logout: 'Sign out', auth_skip: 'Continue without account',
     auth_error_invalid: 'Invalid email or password',
-    auth_check_email: 'Check your email to confirm', auth_pass_short: 'At least 6 characters',
+    auth_check_email: 'Check your email to confirm', auth_register_ok: 'Account created!', auth_pass_short: 'At least 6 characters',
     card_privacidad: 'Privacy & data', card_tutorial: 'Tutorial', card_sesion: 'Session',
     priv_desc: 'Your data is stored securely. You can request deletion at any time.',
     priv_policy_link: 'View Privacy Policy', priv_delete_request: 'Request data deletion',
@@ -976,7 +976,7 @@ const LANG = {
     auth_login: 'Entrar', auth_register: 'Criar conta', auth_password: 'Senha',
     auth_logout: 'Sair', auth_skip: 'Continuar sem conta',
     auth_error_invalid: 'Email ou senha incorretos',
-    auth_check_email: 'Verifique seu email para confirmar', auth_pass_short: 'Mínimo 6 caracteres',
+    auth_check_email: 'Verifique seu email para confirmar', auth_register_ok: 'Conta criada!', auth_pass_short: 'Mínimo 6 caracteres',
     card_privacidad: 'Privacidade e dados', card_tutorial: 'Tutorial', card_sesion: 'Sessão',
     priv_desc: 'Seus dados são armazenados com segurança. Solicite exclusão a qualquer momento.',
     priv_policy_link: 'Ver Política de Privacidade', priv_delete_request: 'Solicitar exclusão dos meus dados',
@@ -3949,9 +3949,26 @@ async function loginEmail(email, password) {
 }
 async function registerEmail(email, password) {
   if(!supabaseClient) { toast(t('sync_error')); return false; }
-  const { data, error } = await supabaseClient.auth.signUp({ email, password });
-  if(error) { toast(error.message); return false; }
-  toast(t('auth_check_email')); return true;
+  try {
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    if(error) { toast(error.message); return false; }
+    // If Supabase returns a session, auto-login
+    if(data.session) {
+      currentUser = data.user; 
+      USER_ID = data.user.id; 
+      localStorage.setItem('finko_user_id', USER_ID);
+      toast(t('auth_register_ok') || '¡Cuenta creada!');
+      onAuthSuccess(); 
+      return true;
+    }
+    // If no session, email confirmation is required
+    toast(t('auth_check_email')); 
+    return true;
+  } catch(e) {
+    console.error('registerEmail error:', e);
+    toast('Error: ' + e.message);
+    return false;
+  }
 }
 async function logout() {
   if(supabaseClient) await supabaseClient.auth.signOut();
