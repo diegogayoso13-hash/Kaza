@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "io.github.diegogayoso13_hash.twa",
+    "sha256_cert_fingerprints": ["50:32:DB:68:71:C7:D9:51:B1:CF:B8:6C:1E:0F:36:F2:0C:E9:B5:DC:7E:EA:DB:A3:8C:A7:E2:A4:26:B1:9D:C6"]
+  }
+}]
