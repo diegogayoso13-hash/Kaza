@@ -80,7 +80,21 @@ function hidePaywall() {
 }
 
 function suscribirsePro() {
-  alert(t('paywall_soon') || 'Próximamente disponible con MercadoPago');
+  const modal = document.getElementById('paywall-modal');
+  if(!modal) return;
+  modal.innerHTML = `<div style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);padding:24px;width:90%;max-width:360px;text-align:center">
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">Elegí tu plan</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:18px">Pago seguro con MercadoPago</div>
+    <a href="https://mpago.la/1puC4Ry" target="_blank"
+      style="display:block;padding:14px;background:#7f77dd;border-radius:10px;color:#fff;font-size:15px;font-weight:600;text-decoration:none;margin-bottom:10px">
+      💳 Mensual — $2.99 USD/mes
+    </a>
+    <a href="https://mpago.la/1kZoeb4" target="_blank"
+      style="display:block;padding:14px;background:#1fba87;border-radius:10px;color:#000;font-size:15px;font-weight:600;text-decoration:none;margin-bottom:14px">
+      🏆 Anual — $19 USD/año <span style="font-size:11px;opacity:.8">(47% off)</span>
+    </a>
+    <button onclick="hidePaywall()" style="background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer">Cancelar</button>
+  </div>`;
 }
 
 const LANG = {
