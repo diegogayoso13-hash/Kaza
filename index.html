@@ -80,10 +80,56 @@ function hidePaywall() {
 }
 
 function suscribirsePro(plan) {
+  const modal = document.getElementById('paywall-modal');
+  if(!modal) return;
+
+  // Si ya hay un plan seleccionado, mostrar pantalla de email
+  if(plan) {
+    const precio = plan === 'anual' ? '$19 USD/año' : '$2.99 USD/mes';
+    modal.innerHTML = `<div style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);padding:24px;width:90%;max-width:360px">
+      <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;text-align:center">Casi listo 🎉</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:18px;text-align:center">Usá el mismo email con el que te registraste en Martifin — así activamos tu Pro automáticamente.</div>
+      <input type="email" id="pro-email-input" placeholder="tu@email.com" autocomplete="email"
+        style="width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;padding:12px;outline:none;margin-bottom:12px;box-sizing:border-box">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px;text-align:center">Plan seleccionado: <strong style="color:var(--teal)">${precio}</strong></div>
+      <button onclick="irAPagarConEmail('${plan}')"
+        style="width:100%;padding:14px;background:#1fba87;border:none;border-radius:10px;color:#000;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px">
+        Ir a pagar con MercadoPago →
+      </button>
+      <button onclick="suscribirsePro(null)" style="width:100%;padding:10px;background:transparent;border:none;color:var(--text2);font-size:13px;cursor:pointer">← Volver</button>
+    </div>`;
+    setTimeout(() => document.getElementById('pro-email-input')?.focus(), 100);
+    return;
+  }
+
+  // Pantalla de selección de plan
+  modal.innerHTML = `<div style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);padding:24px;width:90%;max-width:360px;text-align:center">
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">Elegí tu plan</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:18px">Pago seguro con MercadoPago</div>
+    <button onclick="suscribirsePro('mensual')"
+      style="display:block;width:100%;padding:14px;background:#7f77dd;border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px">
+      💳 Mensual — $2.99 USD/mes
+    </button>
+    <button onclick="suscribirsePro('anual')"
+      style="display:block;width:100%;padding:14px;background:#1fba87;border:none;border-radius:10px;color:#000;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:14px">
+      🏆 Anual — $19 USD/año <span style="font-size:11px;opacity:.8">(47% off)</span>
+    </button>
+    <button onclick="hidePaywall()" style="background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer">Cancelar</button>
+  </div>`;
+}
+
+function irAPagarConEmail(plan) {
+  const emailEl = document.getElementById('pro-email-input');
+  const email = emailEl ? emailEl.value.trim() : '';
+  if(!email || !email.includes('@')) {
+    if(emailEl) { emailEl.style.borderColor='var(--red)'; emailEl.placeholder='Ingresá un email válido'; }
+    return;
+  }
+  localStorage.setItem('finko_pro_email', email);
   const links = { mensual: 'https://mpago.la/1puC4Ry', anual: 'https://mpago.la/1kZoeb4' };
-  const url = links[plan] || links.mensual;
-  window.open(url, '_blank');
+  window.open(links[plan], '_blank');
   hidePaywall();
+  setTimeout(() => { toast('✅ Completá el pago en MercadoPago. Tu Pro se activa solo en minutos.'); }, 500);
 }
 
 const LANG = {
