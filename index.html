@@ -1258,9 +1258,13 @@ html, body { height: 100%; position: relative; background: var(--bg); font-size:
 .hdr-badge { background: var(--teal-dim); color: var(--teal); border: 0.5px solid var(--teal); border-radius: 20px; font-size: 11px; font-weight: 500; padding: 3px 10px; }
 
 /* PAGES */
-.page { display: none; opacity: 0; transform: translateY(8px); }
-.page.active { display: block; animation: pageIn .25s ease-out forwards; }
-@keyframes pageIn { to { opacity: 1; transform: translateY(0); } }
+.page { display: none; opacity: 0; }
+.page.active { display: block; animation: pageIn .2s ease-out forwards; }
+.page.slide-left { animation: slideLeft .2s ease-out forwards; }
+.page.slide-right { animation: slideRight .2s ease-out forwards; }
+@keyframes pageIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideLeft { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideRight { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: translateX(0); } }
 
 /* SKELETON LOADING */
 .skeleton { background: var(--bg2); border-radius: var(--r); overflow: hidden; position: relative; }
@@ -2367,7 +2371,7 @@ function getMesData(mes) {
 }
 
 /* ── NAVIGATION ─────────────────────────────────────────────────────────── */
-async function navTo(pg, btn) {
+async function navTo(pg, btn, direction) {
   // ── PAYWALL GUARD ──
   const proMap = { 'metas': 'metas', 'tendencias': 'tendencias', 'categorias': 'presupuestos' };
   if (proMap[pg]) {
@@ -2380,7 +2384,7 @@ async function navTo(pg, btn) {
 
   // ── HIDE ALL PAGES ──
   document.querySelectorAll('.page').forEach(p => {
-    p.classList.remove('active');
+    p.classList.remove('active','slide-left','slide-right');
     p.style.display = 'none';
   });
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -2388,12 +2392,14 @@ async function navTo(pg, btn) {
   const target = document.getElementById('pg-' + pg);
   if(!target) return;
 
-  // ── RESET ANIMATION ──
+  // ── ANIMATED SHOW ──
   target.style.display = 'block';
   target.style.animation = 'none';
-  target.offsetHeight; // force reflow
+  target.offsetHeight;
   target.style.animation = '';
-  target.classList.add('active');
+  if (direction === 'left') target.classList.add('active','slide-left');
+  else if (direction === 'right') target.classList.add('active','slide-right');
+  else target.classList.add('active');
 
   btn.classList.add('active');
   document.getElementById('content').scrollTop = 0;
@@ -4463,7 +4469,7 @@ if ('serviceWorker' in navigator) {
     if (nextIdx < 0 || nextIdx >= TABS.length) return;
 
     const nextBtn = document.querySelectorAll('.nav-btn')[nextIdx];
-    if (nextBtn) navTo(TABS[nextIdx], nextBtn);
+    if (nextBtn) navTo(TABS[nextIdx], nextBtn, dx < 0 ? 'left' : 'right');
   }, { passive: true });
 })();
 </script>
