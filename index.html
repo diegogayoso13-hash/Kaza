@@ -323,11 +323,12 @@ const LANG = {
 
     // Cafecito
     cafecito_title: 'Apoyar el proyecto',
-    cafecito_desc: 'Martifin es 100% gratis y sin publicidad. Si la app te ayudó a ordenar tus finanzas, podés invitarme un cafecito ☕. Cada aporte me motiva a seguir mejorándola.',
-    cafecito_btn: 'Invitame un cafecito',
+    cafecito_desc: 'Martifin es 100% gratis y sin publicidad. Si la app te ayudó a ordenar tus finanzas, podés invitarme un café ☕. Cada aporte me motiva a seguir mejorándola.',
+    cafecito_btn: 'Invitame un café',
 
     // Inversiones - editar/borrar
     lbl_ultimos_aportes: 'Últimos aportes',
+    lbl_editar_inv: 'Editar aporte de inversión',
     btn_editar: 'Editar',
     btn_borrar: 'Borrar',
     conf_borrar_inv: '¿Borrar este aporte de inversión?',
@@ -685,6 +686,7 @@ const LANG = {
 
     // Investments - edit/delete
     lbl_ultimos_aportes: 'Recent contributions',
+    lbl_editar_inv: 'Edit investment contribution',
     btn_editar: 'Edit',
     btn_borrar: 'Delete',
     conf_borrar_inv: 'Delete this investment contribution?',
@@ -1023,6 +1025,7 @@ const LANG = {
 
     // Investimentos - editar/excluir
     lbl_ultimos_aportes: 'Últimos aportes',
+    lbl_editar_inv: 'Editar aporte de investimento',
     btn_editar: 'Editar',
     btn_borrar: 'Excluir',
     conf_borrar_inv: 'Excluir este aporte de investimento?',
@@ -1377,7 +1380,7 @@ tr:last-child td { border: none; }
   body { background: #fff !important; color: #000 !important; }
   #nav, #header, .btn, .btn-danger-sm, .btn-edit-sm, .month-scroll,
   #inspiracion-card, #pareja-toggle, #filosofia-panel,
-  #onboarding, #edit-modal, #ga-edit-modal, #toast,
+  #onboarding, #edit-modal, #ga-edit-modal, #inv-edit-modal, #toast,
   #reminder-banner { display: none !important; }
   #app { height: auto !important; overflow: visible !important; }
   #content { overflow: visible !important; padding: 0 !important; }
@@ -2127,11 +2130,11 @@ tr:last-child td { border: none; }
       <div class="card" style="background:linear-gradient(135deg, rgba(29,186,135,0.08), rgba(29,186,135,0.02));border:0.5px solid rgba(29,186,135,0.3)">
         <div class="card-title" style="color:#1DBA87">☕ <span data-i18n="cafecito_title">Apoyar el proyecto</span></div>
         <div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6">
-          <span data-i18n="cafecito_desc">Martifin es 100% gratis y sin publicidad. Si la app te ayudó a ordenar tus finanzas, podés invitarme un cafecito ☕. Cada aporte me motiva a seguir mejorándola.</span>
+          <span data-i18n="cafecito_desc">Martifin es 100% gratis y sin publicidad. Si la app te ayudó a ordenar tus finanzas, podés invitarme un café ☕. Cada aporte me motiva a seguir mejorándola.</span>
         </div>
-        <a href="https://cafecito.app/martifin" target="_blank" rel="noopener noreferrer"
+        <a href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer"
            style="display:block;padding:14px;background:#1DBA87;color:#fff;border-radius:var(--r-sm);font-size:15px;font-weight:600;text-decoration:none;text-align:center;box-shadow:0 2px 8px rgba(29,186,135,0.25)">
-          ☕ <span data-i18n="cafecito_btn">Invitame un cafecito</span>
+          ☕ <span data-i18n="cafecito_btn">Invitame un café</span>
         </a>
       </div>
 
@@ -2869,22 +2872,57 @@ function borrarInversion(id) {
   save(); renderInversiones(); renderInvQuick(); toast(t('toast_inv_del'));
 }
 
+var _invEditId = null;
+
 function editarInversion(id) {
   const inv = (DATA.inversiones||[]).find(i => i.id === id);
   if(!inv) return;
-  const nuevoMonto = prompt(t('prompt_nuevo_monto'), inv.monto);
-  if(nuevoMonto === null) return;
-  const monto = parseFloat(nuevoMonto);
-  if(!monto || monto <= 0) { toast(t('toast_monto_invalido')); return; }
-  // Validar saldo
-  const totalInvSinEsta = (DATA.inversiones||[]).filter(i=>i.id!==id).reduce((a,i)=>a+i.monto,0);
+  _invEditId = id;
+  // Llenar el select de meses
+  const selMes = document.getElementById('inve-mes');
+  if(selMes) {
+    selMes.innerHTML = MONTHS.map(m => `<option value="${esc(m)}"${m===inv.mes?' selected':''}>${esc(m)}</option>`).join('');
+  }
+  // Llenar el select de tipos
+  const selTipo = document.getElementById('inve-tipo');
+  if(selTipo) {
+    const tipos = getInvTipos();
+    selTipo.innerHTML = tipos.map(tp => `<option value="${esc(tp)}"${tp===inv.tipo?' selected':''}>${esc(tp)}</option>`).join('');
+  }
+  // Llenar el monto
+  document.getElementById('inve-monto').value = inv.monto;
+  // Mostrar modal
+  document.getElementById('inv-edit-modal').style.display = 'flex';
+}
+
+function cerrarInvEdit() {
+  document.getElementById('inv-edit-modal').style.display = 'none';
+  _invEditId = null;
+}
+
+function guardarInvEdit() {
+  if(_invEditId === null) return;
+  const inv = (DATA.inversiones||[]).find(i => i.id === _invEditId);
+  if(!inv) { cerrarInvEdit(); return; }
+  const nuevoMonto = parseFloat(document.getElementById('inve-monto').value);
+  const nuevoTipo = document.getElementById('inve-tipo').value;
+  const nuevoMes = document.getElementById('inve-mes').value;
+  if(!nuevoMonto || nuevoMonto <= 0) { toast(t('toast_monto_invalido')); return; }
+  // Validar saldo (no puede dejar saldo negativo)
+  const totalInvSinEsta = (DATA.inversiones||[]).filter(i=>i.id!==_invEditId).reduce((a,i)=>a+i.monto,0);
   const totalRetirado = (DATA.retirosInversion||[]).reduce((a,r)=>a+r.monto,0);
-  if((totalInvSinEsta + Math.round(monto)) < totalRetirado) {
+  if((totalInvSinEsta + Math.round(nuevoMonto)) < totalRetirado) {
     toast(t('toast_inv_no_editar'));
     return;
   }
-  inv.monto = Math.round(monto);
-  save(); renderInversiones(); renderInvQuick(); toast(t('toast_inv_edit'));
+  inv.monto = Math.round(nuevoMonto);
+  inv.tipo = nuevoTipo;
+  inv.mes = nuevoMes;
+  save();
+  renderInversiones();
+  renderInvQuick();
+  cerrarInvEdit();
+  toast(t('toast_inv_edit'));
 }
 
 function renderAcumulado() {
@@ -4652,6 +4690,22 @@ window.addEventListener('offline', () => {
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn" onclick="cerrarGaEdit()" style="flex:1"><span data-i18n="lbl_cancelar">Cancelar</span></button>
       <button class="btn btn-primary" onclick="guardarGaEdit()" style="flex:1"><span data-i18n="lbl_guardar">Guardar</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL EDITAR INVERSIÓN ──────────────────────────────────────── -->
+<div id="inv-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:flex-end;justify-content:center">
+  <div style="background:var(--bg2);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px">
+    <div style="font-size:15px;font-weight:600;margin-bottom:16px;color:#1DBA87" data-i18n="lbl_editar_inv">Editar aporte de inversión</div>
+    <div class="row2">
+      <div class="field"><label data-i18n="lbl_monto">Monto ($)</label><input type="number" id="inve-monto" inputmode="decimal"></div>
+      <div class="field"><label data-i18n="lbl_tipo">Tipo</label><select id="inve-tipo"></select></div>
+    </div>
+    <div class="field"><label data-i18n="lbl_mes">Mes</label><select id="inve-mes"></select></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn" onclick="cerrarInvEdit()" style="flex:1"><span data-i18n="lbl_cancelar">Cancelar</span></button>
+      <button class="btn btn-primary" onclick="guardarInvEdit()" style="flex:1;background:#1DBA87;color:#fff"><span data-i18n="lbl_guardar">Guardar</span></button>
     </div>
   </div>
 </div>
