@@ -295,6 +295,15 @@ const LANG = {
     th_sueldo: 'Sueldo',
     th_gastos: 'Gastos',
     th_ahorro: 'Ahorro',
+    lbl_tab_tendencias: 'Tendencias',
+    lbl_resumen_periodo: 'Resumen por período',
+    lbl_periodo: 'Período',
+    lbl_desde: 'Desde',
+    lbl_hasta: 'Hasta',
+    lbl_peor_mes: 'Peor mes',
+    lbl_total_ingresos: 'Total ingresos',
+    lbl_total_gastos: 'Total gastos',
+    lbl_sin_datos_periodo: 'Sin datos para este período',
 
     // Categorías
     lbl_cats_del_mes: 'Categorías del mes',
@@ -697,6 +706,15 @@ const LANG = {
     th_sueldo: 'Income',
     th_gastos: 'Expenses',
     th_ahorro: 'Savings',
+    lbl_tab_tendencias: 'Trends',
+    lbl_resumen_periodo: 'Period summary',
+    lbl_periodo: 'Period',
+    lbl_desde: 'From',
+    lbl_hasta: 'To',
+    lbl_peor_mes: 'Worst month',
+    lbl_total_ingresos: 'Total income',
+    lbl_total_gastos: 'Total expenses',
+    lbl_sin_datos_periodo: 'No data for this period',
     lbl_cats_del_mes: 'Categories this month',
     lbl_vs_presupuesto: 'Vs monthly budget',
     lbl_acum_anual: 'Annual total by category',
@@ -1076,6 +1094,15 @@ const LANG = {
     th_sueldo: 'Renda',
     th_gastos: 'Gastos',
     th_ahorro: 'Poupança',
+    lbl_tab_tendencias: 'Tendências',
+    lbl_resumen_periodo: 'Resumo por período',
+    lbl_periodo: 'Período',
+    lbl_desde: 'De',
+    lbl_hasta: 'Até',
+    lbl_peor_mes: 'Pior mês',
+    lbl_total_ingresos: 'Renda total',
+    lbl_total_gastos: 'Gastos totais',
+    lbl_sin_datos_periodo: 'Sem dados para este período',
     lbl_cats_del_mes: 'Categorias do mês',
     lbl_vs_presupuesto: 'Vs orçamento do mês',
     lbl_acum_anual: 'Total anual por categoria',
@@ -2207,6 +2234,19 @@ tr:last-child td { border: none; }
 
   <!-- TENDENCIAS -->
   <div id="pg-tendencias" class="page">
+
+    <!-- Sub-tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;padding:4px;background:var(--bg3);border-radius:var(--r-sm)">
+      <button id="tend-tab-btn-tendencias" class="tend-tab-btn" data-tab="tendencias" onclick="switchTendTab('tendencias')"
+        style="flex:1;padding:8px 0;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;background:var(--teal);color:#0E1628;font-weight:600;transition:background .15s,color .15s"
+        data-i18n="lbl_tab_tendencias">Tendencias</button>
+      <button id="tend-tab-btn-periodo" class="tend-tab-btn" data-tab="periodo" onclick="switchTendTab('periodo')"
+        style="flex:1;padding:8px 0;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;background:transparent;color:var(--text2);font-weight:400;transition:background .15s,color .15s"
+        data-i18n="lbl_resumen_periodo">Resumen por período</button>
+    </div>
+
+    <!-- Panel: Tendencias (contenido original) -->
+    <div id="tend-panel-tendencias">
         <div class="card" style="border-color:var(--teal)">
       <div style="font-size:10px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px" data-i18n="lbl_tu_progreso">Tu progreso — Energía vital</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
@@ -2251,6 +2291,101 @@ tr:last-child td { border: none; }
         <tbody id="tend-tbody"></tbody>
       </table>
     </div>
+    </div><!-- /tend-panel-tendencias -->
+
+    <!-- Panel: Resumen por período -->
+    <div id="tend-panel-periodo" style="display:none">
+
+      <!-- Selector de período -->
+      <div class="card">
+        <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px" data-i18n="lbl_periodo">Período</div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:5px" data-i18n="lbl_desde">Desde</div>
+            <select id="periodo-desde-sel" onchange="renderResumenPeriodo()"
+              style="width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 10px;appearance:none;-webkit-appearance:none;outline:none"></select>
+          </div>
+          <div style="color:var(--text3);font-size:18px;margin-top:14px">→</div>
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:5px" data-i18n="lbl_hasta">Hasta</div>
+            <select id="periodo-hasta-sel" onchange="renderResumenPeriodo()"
+              style="width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 10px;appearance:none;-webkit-appearance:none;outline:none"></select>
+          </div>
+        </div>
+        <div id="periodo-error" style="display:none;font-size:12px;color:var(--red);margin-top:10px" data-i18n="lbl_sin_datos_periodo">Sin datos para este período</div>
+      </div>
+
+      <!-- KPIs del período -->
+      <div class="card" id="periodo-kpis-card">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:3px" data-i18n="lbl_tasa_promedio">Tasa promedio</div>
+            <div id="periodo-avg-tasa" style="font-size:20px;font-weight:700;color:var(--teal)">—</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:3px" data-i18n="lbl_mejor_mes">Mejor mes</div>
+            <div id="periodo-best-mes" style="font-size:13px;font-weight:600;color:var(--text)">—</div>
+            <div id="periodo-best-tasa" style="font-size:12px;color:var(--teal)">—</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:3px" data-i18n="lbl_peor_mes">Peor mes</div>
+            <div id="periodo-worst-mes" style="font-size:13px;font-weight:600;color:var(--text)">—</div>
+            <div id="periodo-worst-tasa" style="font-size:12px;color:var(--red)">—</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding-top:12px;border-top:0.5px solid var(--border)">
+          <div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:3px" data-i18n="lbl_ahorro_total">Ahorro total</div>
+            <div id="periodo-total-aho" style="font-size:14px;font-weight:600;color:var(--teal)">—</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:3px" data-i18n="lbl_total_ingresos">Total ingresos</div>
+            <div id="periodo-total-ing" style="font-size:14px;font-weight:600;color:var(--text)">—</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:3px" data-i18n="lbl_total_gastos">Total gastos</div>
+            <div id="periodo-total-gas" style="font-size:14px;font-weight:600;color:var(--red)">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfico: Ingresos vs Gastos -->
+      <div class="card">
+        <div style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px" data-i18n="card_ing_vs_gas">Ingresos vs gastos</div>
+        <div style="display:flex;gap:14px;margin-bottom:10px;font-size:11px;color:var(--text2)">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--teal);margin-right:4px"></span><span data-i18n="kpi_ingresos">Ingresos</span></span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--red);margin-right:4px"></span><span data-i18n="kpi_gastos">Gastos</span></span>
+        </div>
+        <div style="position:relative;height:180px"><canvas id="chart-periodo-inggas"></canvas></div>
+      </div>
+
+      <!-- Gráfico: Tasa de ahorro -->
+      <div class="card">
+        <div style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px" data-i18n="card_tasa_mes">Tasa de ahorro por mes</div>
+        <div style="display:flex;gap:14px;margin-bottom:10px;font-size:11px;color:var(--text2)">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--teal);margin-right:4px"></span><span data-i18n="lbl_tasa">Tasa</span></span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(29,186,135,0.2);margin-right:4px"></span>Meta 20%</span>
+        </div>
+        <div style="position:relative;height:180px"><canvas id="chart-periodo-tasas"></canvas></div>
+      </div>
+
+      <!-- Tabla resumen mensual -->
+      <div class="card">
+        <div style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px" data-i18n="card_resumen_mensual">Resumen mensual</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr>
+            <th style="font-size:11px;color:var(--text2);font-weight:500;padding:7px 6px;border-bottom:0.5px solid var(--border);text-align:left" data-i18n="lbl_mes">Mes</th>
+            <th style="font-size:11px;color:var(--text2);font-weight:500;padding:7px 6px;border-bottom:0.5px solid var(--border);text-align:right" data-i18n="kpi_ingresos">Ingresos</th>
+            <th style="font-size:11px;color:var(--text2);font-weight:500;padding:7px 6px;border-bottom:0.5px solid var(--border);text-align:right" data-i18n="kpi_gastos">Gastos</th>
+            <th style="font-size:11px;color:var(--text2);font-weight:500;padding:7px 6px;border-bottom:0.5px solid var(--border);text-align:right" data-i18n="kpi_ahorro">Ahorro</th>
+            <th style="font-size:11px;color:var(--text2);font-weight:500;padding:7px 6px;border-bottom:0.5px solid var(--border);text-align:center">%</th>
+          </tr></thead>
+          <tbody id="periodo-tbody"></tbody>
+        </table>
+      </div>
+
+    </div><!-- /tend-panel-periodo -->
+
   </div>
 
   <!-- CATEGORÍAS ANÁLISIS -->
@@ -2639,6 +2774,7 @@ let selMes = (()=>{
   return MONTHS_DEFAULT.includes(candidate) ? candidate : MONTHS_DEFAULT[MONTHS_DEFAULT.length-1];
 })();
 let chartAnual = null;
+let chartPeriodoIngGas = null, chartPeriodoTasas = null;
 
 function fmt(n) {
   if(n==null||isNaN(n)) return '—';
@@ -3984,6 +4120,144 @@ function renderTendencias() {
       <td style="padding:7px 6px;border-bottom:0.5px solid var(--border);text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--red)">${fmt(gas[i])}</td>
       <td style="padding:7px 6px;border-bottom:0.5px solid var(--border);text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:${a>=0?'var(--teal)':'var(--red)'}">${fmt(a)}</td>
       <td style="padding:7px 6px;border-bottom:0.5px solid var(--border);text-align:center;font-size:11px;color:${t>=20?'var(--teal)':t>=10?'var(--amber)':'var(--red)'}">${t.toFixed(1)}%</td>
+    </tr>`;
+  }).join('');
+
+  initPeriodoSels();
+}
+
+/* ── RESUMEN POR PERÍODO ─────────────────────────────────────────────────── */
+function switchTendTab(tab) {
+  ['tendencias','periodo'].forEach(name => {
+    const btn = document.getElementById('tend-tab-btn-' + name);
+    const panel = document.getElementById('tend-panel-' + name);
+    const active = name === tab;
+    if (btn) {
+      btn.style.background = active ? 'var(--teal)' : 'transparent';
+      btn.style.color = active ? '#0E1628' : 'var(--text2)';
+      btn.style.fontWeight = active ? '600' : '400';
+    }
+    if (panel) panel.style.display = active ? '' : 'none';
+  });
+  if (tab === 'periodo') renderResumenPeriodo();
+}
+
+function initPeriodoSels() {
+  const desdeEl = document.getElementById('periodo-desde-sel');
+  const hastaEl = document.getElementById('periodo-hasta-sel');
+  if (!desdeEl || !hastaEl) return;
+
+  const prevDesde = desdeEl.value;
+  const prevHasta = hastaEl.value;
+
+  const opts = MONTHS.map(m => `<option value="${m}">${getMonthDisplay(m)}</option>`).join('');
+  desdeEl.innerHTML = opts;
+  hastaEl.innerHTML = opts;
+
+  const currentYear = new Date().getFullYear().toString();
+
+  if (prevDesde && MONTHS.includes(prevDesde)) {
+    desdeEl.value = prevDesde;
+  } else {
+    desdeEl.value = MONTHS.find(m => m.includes(currentYear)) || MONTHS[0];
+  }
+
+  if (prevHasta && MONTHS.includes(prevHasta)) {
+    hastaEl.value = prevHasta;
+  } else {
+    hastaEl.value = [...MONTHS].reverse().find(m => m.includes(currentYear)) || MONTHS[MONTHS.length - 1];
+  }
+}
+
+function renderResumenPeriodo() {
+  const desdeEl = document.getElementById('periodo-desde-sel');
+  const hastaEl = document.getElementById('periodo-hasta-sel');
+  const errEl   = document.getElementById('periodo-error');
+  if (!desdeEl || !hastaEl) return;
+
+  const desdeIdx = MONTHS.indexOf(desdeEl.value);
+  const hastaIdx = MONTHS.indexOf(hastaEl.value);
+
+  const invalid = desdeIdx < 0 || hastaIdx < 0 || desdeIdx > hastaIdx;
+  if (errEl) errEl.style.display = invalid ? '' : 'none';
+  if (invalid) return;
+
+  const months = MONTHS.slice(desdeIdx, hastaIdx + 1);
+  const labels = months.map(m => getMonthAbbr(m));
+
+  const ing   = months.map(m => { const u=DATA.sueldos[m]; return u?.sueldo ?? HIST[m]?.sueldo ?? 0; });
+  const gas   = months.map(m => getMesData(m).totalGastos);
+  const aho   = months.map(m => { const u=DATA.sueldos[m]; return u?.ahorro ?? HIST[m]?.ahorro ?? 0; });
+  const tasas = months.map((m,i) => ing[i]>0 ? Math.round(aho[i]/ing[i]*1000)/10 : 0);
+
+  // KPIs
+  const validMs = months.map((m,i)=>({i,t:tasas[i]})).filter(x=>ing[x.i]>0);
+  const avgT     = validMs.length ? Math.round(validMs.reduce((s,x)=>s+x.t,0)/validMs.length*10)/10 : 0;
+  const gastosAhoPeriodo = (DATA.gastosAhorros||[]).filter(g=>months.includes(g.mes)).reduce((a,g)=>a+g.monto,0);
+  const totalAho = aho.reduce((a,b)=>a+b,0) - gastosAhoPeriodo;
+  const totalIng = ing.reduce((a,b)=>a+b,0);
+  const totalGas = gas.reduce((a,b)=>a+b,0);
+  const bestX    = validMs.length ? validMs.reduce((a,b)=>a.t>b.t?a:b) : null;
+  const worstX   = validMs.length ? validMs.reduce((a,b)=>a.t<b.t?a:b) : null;
+
+  const setEl = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  const setStyle = (id,s,v) => { const el=document.getElementById(id); if(el) el.style[s]=v; };
+
+  setEl('periodo-avg-tasa', avgT+'%');
+  setStyle('periodo-avg-tasa','color', avgT>=20?'var(--teal)':avgT>=10?'var(--amber)':'var(--red)');
+
+  if (bestX) {
+    setEl('periodo-best-mes', getMonthAbbr(months[bestX.i]));
+    setEl('periodo-best-tasa', bestX.t.toFixed(1)+'%');
+  } else {
+    setEl('periodo-best-mes','—'); setEl('periodo-best-tasa','—');
+  }
+  if (worstX) {
+    setEl('periodo-worst-mes', getMonthAbbr(months[worstX.i]));
+    setEl('periodo-worst-tasa', worstX.t.toFixed(1)+'%');
+  } else {
+    setEl('periodo-worst-mes','—'); setEl('periodo-worst-tasa','—');
+  }
+
+  setEl('periodo-total-aho', fmt(totalAho));
+  setEl('periodo-total-ing', fmt(totalIng));
+  setEl('periodo-total-gas', fmt(totalGas));
+
+  const grid={color:'rgba(128,128,128,0.08)'};
+  const tick={color:'#888',font:{size:10}};
+
+  // Chart Ingresos vs Gastos
+  if (chartPeriodoIngGas) { chartPeriodoIngGas.destroy(); chartPeriodoIngGas=null; }
+  chartPeriodoIngGas = new Chart(document.getElementById('chart-periodo-inggas'), {type:'bar',
+    data:{labels,datasets:[
+      {label:t('chart_ingresos'),data:ing,backgroundColor:'rgba(29,186,135,0.75)',borderRadius:3},
+      {label:t('chart_gastos'),data:gas,backgroundColor:'rgba(240,75,75,0.65)',borderRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid,ticks:{...tick,autoSkip:months.length>8,maxRotation:45}},
+              y:{grid,ticks:{...tick,callback:v=>'$'+Math.round(v/1000)+'K'}}}}});
+
+  // Chart Tasa de ahorro
+  if (chartPeriodoTasas) { chartPeriodoTasas.destroy(); chartPeriodoTasas=null; }
+  chartPeriodoTasas = new Chart(document.getElementById('chart-periodo-tasas'), {type:'bar',
+    data:{labels,datasets:[
+      {data:tasas,backgroundColor:tasas.map(v=>v>=20?'rgba(29,186,135,0.8)':v>=10?'rgba(240,165,0,0.8)':'rgba(240,75,75,0.8)'),borderRadius:3},
+      {type:'line',data:Array(months.length).fill(20),borderColor:'rgba(29,186,135,0.3)',borderDash:[4,3],borderWidth:1.5,pointRadius:0,fill:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid,ticks:{...tick,autoSkip:months.length>8,maxRotation:45}},
+              y:{grid,ticks:{...tick,callback:v=>v+'%'},min:0,max:Math.max(70,Math.ceil(Math.max(...tasas)/10)*10+10)}}}});
+
+  // Tabla
+  document.getElementById('periodo-tbody').innerHTML = months.map((m,i)=>{
+    const ta=tasas[i]; const a=aho[i];
+    const bg=i%2===0?'background:var(--bg3)':'';
+    return `<tr style="${bg}">
+      <td style="padding:7px 6px;border-bottom:0.5px solid var(--border);font-weight:500;font-size:12px">${getMonthAbbr(m)}</td>
+      <td style="padding:7px 6px;border-bottom:0.5px solid var(--border);text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)">${fmt(ing[i])}</td>
+      <td style="padding:7px 6px;border-bottom:0.5px solid var(--border);text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--red)">${fmt(gas[i])}</td>
+      <td style="padding:7px 6px;border-bottom:0.5px solid var(--border);text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:${a>=0?'var(--teal)':'var(--red)'}">${fmt(a)}</td>
+      <td style="padding:7px 6px;border-bottom:0.5px solid var(--border);text-align:center;font-size:11px;color:${ta>=20?'var(--teal)':ta>=10?'var(--amber)':'var(--red)'}">${ta.toFixed(1)}%</td>
     </tr>`;
   }).join('');
 }
