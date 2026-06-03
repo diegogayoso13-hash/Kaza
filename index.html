@@ -1991,21 +1991,6 @@ tr:last-child td { border: none; }
           <div class="kpi-value" style="font-size:24px;color:var(--teal);font-family:'DM Mono',monospace" id="ac-disp">—</div>
         </div>
 
-        <!-- Detalle: ingresos, ahorrado histórico, usado -->
-        <div class="kpi-grid" style="margin-bottom:12px">
-          <div class="kpi">
-            <div class="kpi-label"><span data-i18n="lbl_total_ingresos">Total ingresos</span></div>
-            <div class="kpi-value" style="font-size:15px;color:var(--teal)" id="ac-ing">—</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label">Ahorrado histórico</div>
-            <div class="kpi-value" style="font-size:15px;color:var(--teal)" id="ac-aho">—</div>
-          </div>
-          <div class="kpi" style="grid-column:span 2">
-            <div class="kpi-label"><span data-i18n="lbl_usado_ahorros">Usado de ahorros</span></div>
-            <div class="kpi-value" style="font-size:15px;color:var(--red)" id="ac-usado">—</div>
-          </div>
-        </div>
         <div id="ac-gastos-list"></div>
       </div>
       <div class="card" style="border-color:rgba(127,119,221,0.3)">
@@ -3351,13 +3336,9 @@ function guardarInvEdit() {
 }
 
 function renderAcumulado() {
-  const totalIng = MONTHS.reduce((a,m)=>{ const u=DATA.sueldos[m]; return a+(u?.sueldo??HIST[m]?.sueldo??0); }, 0);
   const totalAho = MONTHS.reduce((a,m)=>{ const u=DATA.sueldos[m]; return a+(u?.ahorro??HIST[m]?.ahorro??0); }, 0);
   const totalUsado = (DATA.gastosAhorros||[]).reduce((a,g)=>a+g.monto, 0);
   const disponible = totalAho - totalUsado;
-  document.getElementById('ac-ing').textContent = fmt(totalIng);
-  document.getElementById('ac-aho').textContent = fmt(totalAho);
-  document.getElementById('ac-usado').textContent = fmt(totalUsado);
   const dispEl = document.getElementById('ac-disp');
   dispEl.textContent = fmt(disponible);
   dispEl.style.color = disponible >= 0 ? 'var(--teal)' : 'var(--red)';
