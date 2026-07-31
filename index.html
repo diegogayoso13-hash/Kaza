@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v8.5';
+const MARTIFIN_VERSION = 'v8.6';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -207,6 +207,9 @@ const LANG = {
     nav_ajustes: 'Ajustes',
     drawer_finance: 'Finanzas',
     drawer_preferences: 'Preferencias',
+    group_movimientos_frecuentes: 'Movimientos frecuentes',
+    group_este_mes: 'Este mes',
+    group_inversiones: 'Inversiones',
 
     // Header
     hdr_sub: 'Transformá tu relación con el dinero',
@@ -644,6 +647,9 @@ const LANG = {
     nav_ajustes: 'Settings',
     drawer_finance: 'Finance',
     drawer_preferences: 'Preferences',
+    group_movimientos_frecuentes: 'Frequent movements',
+    group_este_mes: 'This month',
+    group_inversiones: 'Investments',
     hdr_sub: 'Transform your relationship with money',
     kpi_ingresos: 'Income',
     kpi_gastos: 'Expenses',
@@ -1034,6 +1040,9 @@ const LANG = {
     nav_ajustes: 'Ajustes',
     drawer_finance: 'Finanças',
     drawer_preferences: 'Preferências',
+    group_movimientos_frecuentes: 'Movimentos frequentes',
+    group_este_mes: 'Este mês',
+    group_inversiones: 'Investimentos',
     hdr_sub: 'Transforme sua relação com o dinheiro',
     kpi_ingresos: 'Renda',
     kpi_gastos: 'Gastos',
@@ -1473,6 +1482,16 @@ html, body { height: 100%; position: relative; background: var(--bg); font-size:
 .drawer-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 20px; background: none; border: none; color: var(--text); font-size: 15px; font-family: 'DM Sans', sans-serif; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .drawer-btn:active { background: var(--bg3); }
 .drawer-divider { height: 0.5px; background: var(--border2); margin: 8px 20px; }
+
+/* CARGAR — GRUPOS COLAPSABLES */
+.collapsible-group { margin-bottom: 12px; }
+.group-header { display: flex; justify-content: space-between; align-items: center; width: 100%; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r); padding: 14px 16px; font-size: 13px; font-weight: 600; color: var(--text); font-family: 'DM Sans', sans-serif; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.collapsible-group.open .group-header { border-color: var(--teal); }
+.group-chevron { font-size: 12px; transition: transform .2s ease; display: inline-block; }
+.collapsible-group.open .group-chevron { transform: rotate(90deg); }
+.group-content { overflow: hidden; max-height: 0; transition: max-height .25s ease; }
+.group-content .card:first-child { margin-top: 12px; }
+.card-featured { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal); }
 .nav-icon { font-size: 18px; line-height: 1; }
 #fab-add:active { transform: scale(0.9); }
 #fab-add.hidden { display: none !important; }
@@ -2091,7 +2110,14 @@ tr:last-child td { border: none; }
 
     <!-- CARGAR -->
     <div id="pg-cargar" class="page">
-      <div class="card">
+
+      <div class="collapsible-group open" id="group-frecuentes">
+        <button class="group-header" onclick="toggleGroup(this)">
+          <span>💰 <span data-i18n="group_movimientos_frecuentes">Movimientos frecuentes</span></span>
+          <span class="group-chevron">▶</span>
+        </button>
+        <div class="group-content">
+      <div class="card card-featured">
         <div class="card-title"><span data-i18n="card_nuevo_gasto">Nuevo gasto</span></div>
         <div class="field"><label data-i18n="lbl_descripcion">Descripción</label><input type="text" id="f-desc" placeholder="Ej: supermercado, nafta..." oninput="autoDetectCat(this.value)"></div>
         <div class="row2">
@@ -2116,6 +2142,29 @@ tr:last-child td { border: none; }
         </div>
       </div>
 
+      <div class="card" id="card-gasto-ahorros">
+        <div class="card-title" style="color:var(--amber)"><span data-i18n="card_gasto_ahorros">Gasto con ahorros</span></div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5" data-i18n="lbl_gasto_ahorros_desc">Para gastos grandes que no son del mes, como vacaciones, un electrodoméstico o una refacción. Estos no cuentan en tu tasa de ahorro mensual.</div>
+        <div class="field"><label data-i18n="lbl_descripcion">Descripción</label><input type="text" id="ga-desc" placeholder="Ej: viaje, refacción..."></div>
+        <div class="row2">
+          <div class="field"><label data-i18n="lbl_monto">Monto ($)</label><input type="number" id="ga-monto" placeholder="0" inputmode="decimal"></div>
+          <div class="field"><label data-i18n="lbl_fecha">Fecha</label><input type="date" id="ga-fecha"></div>
+        </div>
+        <div class="field"><label data-i18n="lbl_descontar_mes">Descontar del mes</label><select id="ga-mes"></select></div>
+        <div class="field"><label data-i18n="lbl_motivo">Motivo</label>
+          <select id="ga-motivo"></select>
+        </div>
+        <button class="btn" style="background:var(--amber-dim);color:var(--amber);border:0.5px solid var(--amber);font-size:15px;font-weight:600;padding:14px" onclick="guardarGastoAhorro()"><span data-i18n="btn_registrar_gasto_aho">Registrar gasto con ahorros</span></button>
+      </div>
+        </div>
+      </div>
+
+      <div class="collapsible-group" id="group-estemes">
+        <button class="group-header" onclick="toggleGroup(this)">
+          <span>📅 <span data-i18n="group_este_mes">Este mes</span></span>
+          <span class="group-chevron">▶</span>
+        </button>
+        <div class="group-content">
       <div class="card">
         <div class="card-title"><span data-i18n="card_sueldo">Sueldo del mes</span></div>
         <div class="field"><label data-i18n="lbl_mes">Mes</label><select id="s-mes" onchange="renderQuick()"></select></div>
@@ -2138,48 +2187,6 @@ tr:last-child td { border: none; }
 
         <div class="divider"></div>
         <div id="quick-summary" style="font-size:13px;color:var(--text2);text-align:center;padding:8px 0"><span data-i18n="lbl_quick_sel">Seleccioná un mes arriba</span></div>
-      </div>
-
-      <div class="card" id="card-gasto-ahorros">
-        <div class="card-title" style="color:var(--amber)"><span data-i18n="card_gasto_ahorros">Gasto con ahorros</span></div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5" data-i18n="lbl_gasto_ahorros_desc">Para gastos grandes que no son del mes, como vacaciones, un electrodoméstico o una refacción. Estos no cuentan en tu tasa de ahorro mensual.</div>
-        <div class="field"><label data-i18n="lbl_descripcion">Descripción</label><input type="text" id="ga-desc" placeholder="Ej: viaje, refacción..."></div>
-        <div class="row2">
-          <div class="field"><label data-i18n="lbl_monto">Monto ($)</label><input type="number" id="ga-monto" placeholder="0" inputmode="decimal"></div>
-          <div class="field"><label data-i18n="lbl_fecha">Fecha</label><input type="date" id="ga-fecha"></div>
-        </div>
-        <div class="field"><label data-i18n="lbl_descontar_mes">Descontar del mes</label><select id="ga-mes"></select></div>
-        <div class="field"><label data-i18n="lbl_motivo">Motivo</label>
-          <select id="ga-motivo"></select>
-        </div>
-        <button class="btn" style="background:var(--amber-dim);color:var(--amber);border:0.5px solid var(--amber);font-size:15px;font-weight:600;padding:14px" onclick="guardarGastoAhorro()"><span data-i18n="btn_registrar_gasto_aho">Registrar gasto con ahorros</span></button>
-      </div>
-
-      <div class="card" style="border-color:rgba(127,119,221,0.3)">
-        <div class="card-title" style="color:#1DBA87"><span data-i18n="card_cargar_inv">Cargar inversión</span></div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5" data-i18n="lbl_cargar_inv_desc">Registrá cuánto invertiste este mes y en qué instrumento.</div>
-        <div class="field"><label data-i18n="lbl_mes">Mes</label><select id="inv-mes-sel" onchange="renderInvQuick()"></select></div>
-        <div class="row2">
-          <div class="field"><label data-i18n="lbl_monto">Monto ($)</label><input type="number" id="s-inversion" placeholder="0" inputmode="decimal" style="border-color:rgba(127,119,221,0.3)"></div>
-          <div class="field"><label data-i18n="lbl_tipo">Tipo</label><select id="s-inv-tipo" style="border-color:rgba(127,119,221,0.3);background:var(--bg3);border-radius:var(--r-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;padding:12px 14px;width:100%;appearance:none;-webkit-appearance:none;outline:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 14px center;padding-right:36px"></select></div>
-        </div>
-        <button class="btn" style="background:rgba(127,119,221,0.12);color:#1DBA87;border:0.5px solid #1DBA87;font-size:15px;font-weight:600;padding:14px;margin-bottom:14px" onclick="guardarInversion()"><span data-i18n="btn_guardar_inv">Guardar inversión</span></button>
-        <div id="inv-quick" style="font-size:13px;color:var(--text2);text-align:center;padding:6px 0"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title" style="color:#1DBA87"><span data-i18n="card_retiro_inv">Retiro de inversiones</span></div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5" data-i18n="lbl_retiro_inv_desc">Registrá un retiro de tu cartera de inversiones. Se descuenta del saldo acumulado.</div>
-        <div class="field"><label data-i18n="lbl_descripcion">Descripción</label><input type="text" id="ri-desc" placeholder="Ej: venta acciones, rescate fondo..."></div>
-        <div class="row2">
-          <div class="field"><label data-i18n="lbl_monto">Monto ($)</label><input type="number" id="ri-monto" placeholder="0" inputmode="decimal"></div>
-          <div class="field"><label data-i18n="lbl_fecha">Fecha</label><input type="date" id="ri-fecha"></div>
-        </div>
-        <div class="field"><label data-i18n="lbl_mes">Mes</label><select id="ri-mes"></select></div>
-        <div class="field"><label data-i18n="lbl_motivo">Motivo</label>
-          <select id="ri-motivo"></select>
-        </div>
-        <button class="btn" style="background:rgba(127,119,221,0.12);color:#1DBA87;border:0.5px solid #1DBA87;font-size:15px;font-weight:600;padding:14px" onclick="guardarRetiroInversion()"><span data-i18n="btn_registrar_retiro">Registrar retiro</span></button>
       </div>
 
       <div class="card">
@@ -2217,6 +2224,44 @@ tr:last-child td { border: none; }
         <div id="p-inputs" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"></div>
         <button class="btn" style="background:var(--blue-dim);color:var(--blue);border:0.5px solid var(--blue);font-size:15px;font-weight:600;padding:14px" onclick="guardarPresupuesto()"><span data-i18n="btn_guardar_presupuesto">Guardar presupuesto</span></button>
       </div>
+        </div>
+      </div>
+
+      <div class="collapsible-group" id="group-inversiones">
+        <button class="group-header" onclick="toggleGroup(this)">
+          <span>💼 <span data-i18n="group_inversiones">Inversiones</span></span>
+          <span class="group-chevron">▶</span>
+        </button>
+        <div class="group-content">
+      <div class="card" style="border-color:rgba(127,119,221,0.3)">
+        <div class="card-title" style="color:#1DBA87"><span data-i18n="card_cargar_inv">Cargar inversión</span></div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5" data-i18n="lbl_cargar_inv_desc">Registrá cuánto invertiste este mes y en qué instrumento.</div>
+        <div class="field"><label data-i18n="lbl_mes">Mes</label><select id="inv-mes-sel" onchange="renderInvQuick()"></select></div>
+        <div class="row2">
+          <div class="field"><label data-i18n="lbl_monto">Monto ($)</label><input type="number" id="s-inversion" placeholder="0" inputmode="decimal" style="border-color:rgba(127,119,221,0.3)"></div>
+          <div class="field"><label data-i18n="lbl_tipo">Tipo</label><select id="s-inv-tipo" style="border-color:rgba(127,119,221,0.3);background:var(--bg3);border-radius:var(--r-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;padding:12px 14px;width:100%;appearance:none;-webkit-appearance:none;outline:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 14px center;padding-right:36px"></select></div>
+        </div>
+        <button class="btn" style="background:rgba(127,119,221,0.12);color:#1DBA87;border:0.5px solid #1DBA87;font-size:15px;font-weight:600;padding:14px;margin-bottom:14px" onclick="guardarInversion()"><span data-i18n="btn_guardar_inv">Guardar inversión</span></button>
+        <div id="inv-quick" style="font-size:13px;color:var(--text2);text-align:center;padding:6px 0"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="color:#1DBA87"><span data-i18n="card_retiro_inv">Retiro de inversiones</span></div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5" data-i18n="lbl_retiro_inv_desc">Registrá un retiro de tu cartera de inversiones. Se descuenta del saldo acumulado.</div>
+        <div class="field"><label data-i18n="lbl_descripcion">Descripción</label><input type="text" id="ri-desc" placeholder="Ej: venta acciones, rescate fondo..."></div>
+        <div class="row2">
+          <div class="field"><label data-i18n="lbl_monto">Monto ($)</label><input type="number" id="ri-monto" placeholder="0" inputmode="decimal"></div>
+          <div class="field"><label data-i18n="lbl_fecha">Fecha</label><input type="date" id="ri-fecha"></div>
+        </div>
+        <div class="field"><label data-i18n="lbl_mes">Mes</label><select id="ri-mes"></select></div>
+        <div class="field"><label data-i18n="lbl_motivo">Motivo</label>
+          <select id="ri-motivo"></select>
+        </div>
+        <button class="btn" style="background:rgba(127,119,221,0.12);color:#1DBA87;border:0.5px solid #1DBA87;font-size:15px;font-weight:600;padding:14px" onclick="guardarRetiroInversion()"><span data-i18n="btn_registrar_retiro">Registrar retiro</span></button>
+      </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- HISTORIAL -->
@@ -2979,6 +3024,7 @@ async function navTo(pg, btn, direction) {
   if(pg==='ajustes') { setTimeout(renderAjustes, 50); }
   if(pg==='tendencias') renderTendencias();
   if(pg==='categorias') { initCatMesSel(); renderCatAnalisis(); }
+  if(pg==='cargar') resetGruposCargar();
 }
 
 /* ── MONTH SCROLL ───────────────────────────────────────────────────────── */
@@ -3431,6 +3477,49 @@ function renderAcumulado() {
           <button class="btn-danger-sm" onclick="borrarGastoAhorro(${g.id})">✕</button>
         </div>
       </div>`).join('') + '</div>';
+}
+
+/* ── CARGAR: GRUPOS COLAPSABLES ───────────────────────────────────────────── */
+function toggleGroup(headerEl) {
+  const group = headerEl.closest('.collapsible-group');
+  const content = group.querySelector('.group-content');
+  if (!group || !content) return;
+  if (group.classList.contains('open')) {
+    // Cerrar: fijar la altura actual (por si el contenido creció mientras estaba abierto)
+    // como punto de partida, forzar reflow, y recién ahí animar a 0.
+    content.style.maxHeight = content.scrollHeight + 'px';
+    content.offsetHeight;
+    content.style.maxHeight = '0px';
+    group.classList.remove('open');
+  } else {
+    // Abrir: animar hasta la altura medida y, al terminar, sacar el límite
+    // para que el contenido pueda crecer después (ej: agregarExtra) sin cortarse.
+    group.classList.add('open');
+    content.style.maxHeight = content.scrollHeight + 'px';
+    content.addEventListener('transitionend', function onEnd(e) {
+      if (e.target === content && e.propertyName === 'max-height') {
+        if (group.classList.contains('open')) content.style.maxHeight = 'none';
+        content.removeEventListener('transitionend', onEnd);
+      }
+    });
+    headerEl.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+}
+
+function resetGruposCargar() {
+  const defaults = {'group-frecuentes': true, 'group-estemes': false, 'group-inversiones': false};
+  Object.entries(defaults).forEach(([id, abierto]) => {
+    const group = document.getElementById(id);
+    const content = group?.querySelector('.group-content');
+    if (!group || !content) return;
+    if (abierto) {
+      group.classList.add('open');
+      content.style.maxHeight = 'none';
+    } else {
+      group.classList.remove('open');
+      content.style.maxHeight = '0px';
+    }
+  });
 }
 
 /* ── CARGAR ─────────────────────────────────────────────────────────────── */
