@@ -41,18 +41,53 @@ function safeSet(key, val) {
   catch(e) { console.warn('localStorage.setItem failed:', key, e.message); return false; }
 }
 
+/* ── MIGRACIÓN finko_ → martifin_ ────────────────────────────────────────
+ * Copia las claves viejas con prefijo "finko_" al prefijo actual
+ * "martifin_". No borra las viejas (quedan de backup). Idempotente: si
+ * la clave nueva ya existe, no la pisa. Corre antes que cualquier otra
+ * lectura de localStorage en el archivo.
+ * ─────────────────────────────────────────────────────────────────────── */
+function migrateFinkoToMartifin() {
+  const KEY_MAP = {
+    finko_trial_start: 'martifin_trial_start',
+    finko_pro_email: 'martifin_pro_email',
+    finko_lang: 'martifin_lang',
+    finko_skip_auth: 'martifin_skip_auth',
+    finko_onboarded: 'martifin_onboarded',
+    finko_hist_compacto: 'martifin_hist_compacto',
+    finko_user_id: 'martifin_user_id',
+    finko_hide_filosofia: 'martifin_hide_filosofia',
+    finko_filosofia_shown: 'martifin_filosofia_shown',
+    finko_theme: 'martifin_theme',
+    finko_trial_banner_closed: 'martifin_trial_banner_closed',
+    finko_pending_register_anon: 'martifin_pending_register_anon',
+    finko_tutorial_done: 'martifin_tutorial_done',
+    finko_swipe_tabs: 'martifin_swipe_tabs'
+  };
+  try {
+    Object.keys(KEY_MAP).forEach(function(oldKey) {
+      const newKey = KEY_MAP[oldKey];
+      if (localStorage.getItem(newKey) === null) {
+        const oldVal = localStorage.getItem(oldKey);
+        if (oldVal !== null) safeSet(newKey, oldVal);
+      }
+    });
+  } catch(e) { console.warn('migración finko_->martifin_ falló:', e.message); }
+}
+migrateFinkoToMartifin();
+
 /* ── TRIAL 30 DÍAS ───────────────────────────────────────────────────────
- * Al registrarse (o skipear auth) se guarda finko_trial_start.
+ * Al registrarse (o skipear auth) se guarda martifin_trial_start.
  * Durante 30 días acceso libre a todas las features Pro EXCEPTO sync_cloud.
  * Los días 28-29 se muestra un banner de aviso.
  * ─────────────────────────────────────────────────────────────────────── */
 function initTrialStart() {
-  if (!localStorage.getItem('finko_trial_start')) {
-    safeSet('finko_trial_start', new Date().toISOString());
+  if (!localStorage.getItem('martifin_trial_start')) {
+    safeSet('martifin_trial_start', new Date().toISOString());
   }
 }
 function getTrialDaysLeft() {
-  const start = localStorage.getItem('finko_trial_start');
+  const start = localStorage.getItem('martifin_trial_start');
   if (!start) return 0;
   const diff = (new Date() - new Date(start)) / (1000 * 60 * 60 * 24);
   return Math.max(0, Math.ceil(30 - diff));
@@ -149,7 +184,7 @@ function irAPagarConEmail(plan) {
     if(emailEl) { emailEl.style.borderColor='var(--red)'; emailEl.placeholder='Ingresá un email válido'; }
     return;
   }
-  safeSet('finko_pro_email', email);
+  safeSet('martifin_pro_email', email);
   const links = { mensual: 'https://mpago.la/1puC4Ry', anual: 'https://mpago.la/1kZoeb4' };
   window.open(links[plan], '_blank');
   hidePaywall();
@@ -1372,7 +1407,7 @@ const LANG = {
   }
 };
 
-let currentLang = localStorage.getItem('finko_lang') || 'es';
+let currentLang = localStorage.getItem('martifin_lang') || 'es';
 
 </script>
 
@@ -2506,7 +2541,7 @@ tr:last-child td { border: none; }
            style="display:block;padding:12px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--blue);font-size:13px;text-decoration:none;margin-bottom:10px;text-align:center">
           📄 <span data-i18n="priv_policy_link">Ver Política de Privacidad</span>
         </a>
-        <a href="mailto:hola@martifin.com?subject=Solicitud%20de%20eliminaci%C3%B3n%20de%20datos%20-%20Finko"
+        <a href="mailto:hola@martifin.com?subject=Solicitud%20de%20eliminaci%C3%B3n%20de%20datos%20-%20Martifin"
            style="display:block;padding:12px;background:var(--red-dim);border:0.5px solid var(--red);border-radius:var(--r-sm);color:var(--red);font-size:13px;text-decoration:none;margin-bottom:10px;text-align:center">
           🗑️ <span data-i18n="priv_delete_request">Solicitar eliminación de mis datos</span>
         </a>
@@ -3708,10 +3743,10 @@ renderChart();
 renderAcumulado();
 setTimeout(cloudLoad, 800);
 initTheme();
-currentLang = localStorage.getItem('finko_lang') || 'es';
+currentLang = localStorage.getItem('martifin_lang') || 'es';
 applyLang();  // aplica traducciones guardadas al cargar
 // obInit moved to after auth check
-if(localStorage.getItem('finko_skip_auth') || localStorage.getItem('finko_onboarded')) obInit();
+if(localStorage.getItem('martifin_skip_auth') || localStorage.getItem('martifin_onboarded')) obInit();
 setTimeout(initParejaUI, 100);
 setTimeout(checkRecordatorios, 1500);
 setTimeout(checkTrialBanner, 2000);
@@ -3963,7 +3998,7 @@ function renderHistorial() {
   }
 
   // ── MODO COMPRIMIDO ──
-  const compacto = localStorage.getItem('finko_hist_compacto') === '1';
+  const compacto = localStorage.getItem('martifin_hist_compacto') === '1';
   const btnCompacto = document.getElementById('h-toggle-compacto');
   if (btnCompacto) btnCompacto.textContent = compacto ? '☰ Vista normal' : '≡ Vista compacta';
 
@@ -3998,9 +4033,9 @@ function renderHistorial() {
 }
 
 function toggleHistCompacto() {
-  const actual = localStorage.getItem('finko_hist_compacto') === '1';
-  if (!actual) safeSet('finko_hist_compacto','1');
-  else localStorage.removeItem('finko_hist_compacto');
+  const actual = localStorage.getItem('martifin_hist_compacto') === '1';
+  if (!actual) safeSet('martifin_hist_compacto','1');
+  else localStorage.removeItem('martifin_hist_compacto');
   const btn = document.getElementById('h-toggle-compacto');
   if (btn) btn.textContent = !actual ? '☰ Vista normal' : '≡ Vista compacta';
   renderHistorial();
@@ -4332,8 +4367,8 @@ function renderCatAnalisis() {
 
 
 function obInit() {
-  const done = localStorage.getItem('finko_onboarded');
-  const hasCode = localStorage.getItem('finko_user_id');
+  const done = localStorage.getItem('martifin_onboarded');
+  const hasCode = localStorage.getItem('martifin_user_id');
   // Show onboarding if never completed OR never set a personal code
   if(!done || !hasCode) {
     const ob = document.getElementById('onboarding');
@@ -4378,7 +4413,7 @@ function obFinish() {
     const rawCode = document.getElementById('ob-user-code')?.value?.trim().toLowerCase().replace(/[^a-z0-9]/g,'');
     const userCode = rawCode || ('user' + Date.now().toString(36));
     USER_ID = userCode;
-    safeSet('finko_user_id', userCode);
+    safeSet('martifin_user_id', userCode);
   }
   const mes = document.getElementById('ob-mes')?.value;
   const anio = document.getElementById('ob-anio')?.value;
@@ -4394,7 +4429,7 @@ function obFinish() {
       save();
     }
   }
-  safeSet('finko_onboarded','1');
+  safeSet('martifin_onboarded','1');
   const ob = document.getElementById('onboarding'); if(ob) ob.style.display = 'none';
   populateSelects();
   if(typeof populateSelectsExtra==='function') populateSelectsExtra();
@@ -4403,12 +4438,12 @@ function obFinish() {
 }
 
 function obSkip() {
-  if(!localStorage.getItem('finko_user_id')) {
+  if(!localStorage.getItem('martifin_user_id')) {
     const code = 'user' + Date.now().toString(36);
     USER_ID = code;
-    safeSet('finko_user_id', code);
+    safeSet('martifin_user_id', code);
   }
-  safeSet('finko_onboarded','1');
+  safeSet('martifin_onboarded','1');
   const ob = document.getElementById('onboarding'); if(ob) ob.style.display = 'none';
 }
 
@@ -4490,7 +4525,7 @@ function renderAjustesParejaUI() {
 }
 
 function verOnboarding() {
-  localStorage.removeItem('finko_onboarded');
+  localStorage.removeItem('martifin_onboarded');
   const ob = document.getElementById('onboarding');
   if(ob) { ob.style.display = 'flex'; ob.style.flexDirection = 'column'; }
   [1,2,3].forEach(i=>{const el=document.getElementById('ob-step-'+i);if(el)el.style.display='none';});
@@ -4500,7 +4535,7 @@ function verOnboarding() {
 /* ── SUPABASE SYNC ───────────────────────────────────────────────────────── */
 const SB_URL = 'https://zfoetyauhauztkkltjaz.supabase.co';
 const SB_KEY = 'sb_publishable_v46DhQgi48QpamiqYzMfwQ_7wrKKLc0';
-let USER_ID = (localStorage.getItem('finko_user_id') || 'finko_user').toLowerCase().replace(/[^a-z0-9_]/g,'') || 'finko_user';
+let USER_ID = (localStorage.getItem('martifin_user_id') || 'finko_user').toLowerCase().replace(/[^a-z0-9_]/g,'') || 'finko_user';
 let _dot = null;
 
 
@@ -4732,17 +4767,17 @@ function cerrarFilosofia() {
 }
 
 function cerrarFilosofiaNoMostrar() {
-  safeSet('finko_hide_filosofia', '1');
+  safeSet('martifin_hide_filosofia', '1');
   cerrarFilosofia();
   const card = document.getElementById('inspiracion-card');
   if(card) card.style.display = 'none';
 }
 
 function initFilosofia() {
-  const hidden = localStorage.getItem('finko_hide_filosofia');
-  const firstTime = !localStorage.getItem('finko_filosofia_shown');
+  const hidden = localStorage.getItem('martifin_hide_filosofia');
+  const firstTime = !localStorage.getItem('martifin_filosofia_shown');
   if(!hidden && firstTime) {
-    safeSet('finko_filosofia_shown', '1');
+    safeSet('martifin_filosofia_shown', '1');
     setTimeout(abrirFilosofia, 1200);
   }
   if(hidden) {
@@ -4797,7 +4832,7 @@ function borrarGastoAhorro(id) {
 function t(key) { return (LANG[currentLang] && LANG[currentLang][key]) || LANG['es'][key] || key; }
 function setLang(lang) {
   currentLang = lang;
-  safeSet('finko_lang', lang);
+  safeSet('martifin_lang', lang);
   applyLang();
   ['es','en','pt'].forEach(l => {
     const btn = document.getElementById('lang-btn-'+l);
@@ -4834,17 +4869,17 @@ function applyLang() {
 
 /* ── TEMA OSCURO/CLARO ───────────────────────────────────────────────────── */
 function initTheme() {
-  const saved = localStorage.getItem('finko_theme') || 'dark';
+  const saved = localStorage.getItem('martifin_theme') || 'dark';
   applyTheme(saved);
 }
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   const btn = document.getElementById('theme-toggle');
   if(btn) btn.textContent = theme === 'dark' ? '🌙' : '☀️';
-  safeSet('finko_theme', theme);
+  safeSet('martifin_theme', theme);
 }
 function toggleTheme() {
-  const current = localStorage.getItem('finko_theme') || 'dark';
+  const current = localStorage.getItem('martifin_theme') || 'dark';
   applyTheme(current === 'dark' ? 'light' : 'dark');
 }
 
@@ -4891,7 +4926,7 @@ function checkRecordatorios() {
 function cerrarTrialBanner() {
   const el = document.getElementById('trial-banner');
   if(el) el.style.display = 'none';
-  safeSet('finko_trial_banner_closed', new Date().toISOString().slice(0,10));
+  safeSet('martifin_trial_banner_closed', new Date().toISOString().slice(0,10));
 }
 
 async function checkTrialBanner() {
@@ -4899,7 +4934,7 @@ async function checkTrialBanner() {
   if(pro) return;
   const daysLeft = getTrialDaysLeft();
   if(daysLeft > 2 || daysLeft === 0) return;
-  const closedToday = localStorage.getItem('finko_trial_banner_closed');
+  const closedToday = localStorage.getItem('martifin_trial_banner_closed');
   if(closedToday === new Date().toISOString().slice(0,10)) return;
   const banner = document.getElementById('trial-banner');
   const text = document.getElementById('trial-banner-text');
@@ -5170,16 +5205,16 @@ async function checkAuthSession() {
     if(session) {
       currentUser = session.user;
       USER_ID = session.user.id;
-      safeSet('finko_user_id', USER_ID);
+      safeSet('martifin_user_id', USER_ID);
       onAuthSuccess();
       return;
     }
     // No hay sesión. Si había un user_id tipo UUID guardado, la sesión expiró o fue revocada.
-    const storedId = localStorage.getItem('finko_user_id');
+    const storedId = localStorage.getItem('martifin_user_id');
     const wasLoggedIn = storedId && !isAnonId(storedId);
     if(wasLoggedIn) {
       // Limpiar credenciales stale y forzar login
-      ['finko_user_id','finko_skip_auth'].forEach(k => localStorage.removeItem(k));
+      ['martifin_user_id','martifin_skip_auth'].forEach(k => localStorage.removeItem(k));
       currentUser = null;
       updateAuthUI();
       toast(t('auth_session_expired') || 'Tu sesión expiró. Iniciá sesión de nuevo.');
@@ -5204,7 +5239,7 @@ function initAuthStateListener() {
     } else if(event === 'SIGNED_IN' && session) {
       currentUser = session.user;
       USER_ID = session.user.id;
-      safeSet('finko_user_id', USER_ID);
+      safeSet('martifin_user_id', USER_ID);
       updateAuthUI();
     } else if(event === 'PASSWORD_RECOVERY') {
       showResetPassScreen();
@@ -5333,7 +5368,7 @@ async function handlePostRegisterMigration(prevAnonId, prevLocalSnapshot) {
     toast(t('auth_register_ok') || '¡Cuenta creada!');
   }
 
-  if(!localStorage.getItem('finko_onboarded')) obInit();
+  if(!localStorage.getItem('martifin_onboarded')) obInit();
 }
 
 async function handlePostLoginMigration(prevAnonId, prevLocalSnapshot) {
@@ -5369,7 +5404,7 @@ async function handlePostLoginMigration(prevAnonId, prevLocalSnapshot) {
     buildMonthScroll();
     renderKPIs(); renderCatBars(); renderChart(); renderAcumulado();
     toast(t('toast_login_migrated') || 'Datos guardados en tu cuenta ✓');
-    if(!localStorage.getItem('finko_onboarded')) obInit();
+    if(!localStorage.getItem('martifin_onboarded')) obInit();
     _migrationInProgress = false;
     return;
   }
@@ -5410,7 +5445,7 @@ async function applyMigrationKeepLocal(prevAnonId, snapshot) {
   buildMonthScroll();
   renderKPIs(); renderCatBars(); renderChart(); renderAcumulado();
   toast(t('toast_login_migrated') || 'Datos guardados en tu cuenta ✓');
-  if(!localStorage.getItem('finko_onboarded')) obInit();
+  if(!localStorage.getItem('martifin_onboarded')) obInit();
   _migrationInProgress = false;
 }
 
@@ -5425,7 +5460,7 @@ function finishMigrationAndLoadCloud() {
   initTrialStart();
   cloudLoad();
   updateAuthUI();
-  if(!localStorage.getItem('finko_onboarded')) obInit();
+  if(!localStorage.getItem('martifin_onboarded')) obInit();
   _migrationInProgress = false;
 }
 
@@ -5435,7 +5470,7 @@ async function cancelMigrationLogout(prevAnonId, snapshot) {
   currentUser = null;
   if(prevAnonId) {
     USER_ID = prevAnonId;
-    safeSet('finko_user_id', prevAnonId);
+    safeSet('martifin_user_id', prevAnonId);
   }
   if(snapshot && snapshot.data) {
     DATA = snapshot.data;
@@ -5482,11 +5517,11 @@ async function loginEmail(email, password) {
 
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if(error) { toast(error.message.includes('Invalid') ? t('auth_error_invalid') : error.message); return false; }
-    currentUser = data.user; USER_ID = data.user.id; safeSet('finko_user_id', USER_ID);
+    currentUser = data.user; USER_ID = data.user.id; safeSet('martifin_user_id', USER_ID);
 
-    const pendingAnonRegister = localStorage.getItem('finko_pending_register_anon');
+    const pendingAnonRegister = localStorage.getItem('martifin_pending_register_anon');
     if(pendingAnonRegister && pendingAnonRegister === prevAnonId) {
-      localStorage.removeItem('finko_pending_register_anon');
+      localStorage.removeItem('martifin_pending_register_anon');
       await handlePostRegisterMigration(prevAnonId, prevLocalSnapshot);
       return true;
     }
@@ -5510,12 +5545,12 @@ async function registerEmail(email, password) {
     if(data.session) {
       currentUser = data.user; 
       USER_ID = data.user.id; 
-      safeSet('finko_user_id', USER_ID);
+      safeSet('martifin_user_id', USER_ID);
       await handlePostRegisterMigration(prevAnonId, prevLocalSnapshot);
       return true;
     }
     if(prevAnonId && isAnonId(prevAnonId)) {
-      safeSet('finko_pending_register_anon', prevAnonId);
+      safeSet('martifin_pending_register_anon', prevAnonId);
     }
     toast(t('auth_check_email')); 
     return true;
@@ -5529,7 +5564,7 @@ async function logout() {
   if(supabaseClient) await supabaseClient.auth.signOut();
   currentUser = null;
   // Limpiar localStorage — si no, al re-loguear con otra cuenta quedan datos del anterior
-  ['finko_user_id','fpro_v3','finko_skip_auth','finko_onboarded','finko_trial_start','finko_trial_banner_closed','finko_pending_register_anon'].forEach(k => localStorage.removeItem(k));
+  ['martifin_user_id','fpro_v3','martifin_skip_auth','martifin_onboarded','martifin_trial_start','martifin_trial_banner_closed','martifin_pending_register_anon'].forEach(k => localStorage.removeItem(k));
   // Reset estado en memoria para evitar que save() pise datos del próximo usuario
   DATA = { gastos:[], sueldos:{}, presupuestos:{}, presupuestoGeneral:{}, metas:[], gastosAhorros:[], retirosInversion:[], inversiones:[], invTipos:null };
   _cloudLoaded = false;
@@ -5545,7 +5580,7 @@ function onAuthSuccess() {
     initTrialStart();
     cloudLoad();
     updateAuthUI();
-    if(!localStorage.getItem('finko_onboarded')) obInit();
+    if(!localStorage.getItem('martifin_onboarded')) obInit();
   } catch(e) {
     console.error('onAuthSuccess error:', e);
     hideLoginScreen();
@@ -5591,18 +5626,18 @@ function hideLoginScreen() {
 }
 function skipAuth() { 
   hideLoginScreen(); 
-  safeSet('finko_skip_auth','1');
+  safeSet('martifin_skip_auth','1');
   // Generate anonymous user ID for offline mode
-  if(!localStorage.getItem('finko_user_id')) {
+  if(!localStorage.getItem('martifin_user_id')) {
     const anonId = 'anon_' + Date.now().toString(36);
     USER_ID = anonId;
-    safeSet('finko_user_id', anonId);
+    safeSet('martifin_user_id', anonId);
   }
   // Sin cuenta = no hay cloudLoad. save() persiste a localStorage (no depende de _cloudLoaded).
   // Iniciar trial de 30 días
   initTrialStart();
   // Show onboarding if first time
-  if(!localStorage.getItem('finko_onboarded')) obInit();
+  if(!localStorage.getItem('martifin_onboarded')) obInit();
 }
 function toggleAuthPanel(mode) {
   const panel = document.getElementById('auth-panel');
@@ -5764,14 +5799,14 @@ let tutorialStep = 0;
 function startTutorial() { tutorialStep=0; showTutorialStep(); }
 function showTutorialStep() {
   const prev=document.getElementById('tutorial-overlay'); if(prev) prev.remove();
-  if(tutorialStep>=TUTORIAL_STEPS.length){safeSet('finko_tutorial_done','1');return;}
+  if(tutorialStep>=TUTORIAL_STEPS.length){safeSet('martifin_tutorial_done','1');return;}
   const s=TUTORIAL_STEPS[tutorialStep];
   const o=document.createElement('div'); o.id='tutorial-overlay';
   o.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:900" onclick="nextTutorialStep()"></div><div style="position:fixed;bottom:80px;left:16px;right:16px;z-index:901;background:#1a1a2e;border:1px solid #1DBA87;border-radius:16px;padding:20px;max-width:360px;margin:0 auto"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:10px;color:#1DBA87;font-weight:600;text-transform:uppercase;letter-spacing:.1em">${tutorialStep+1}/${TUTORIAL_STEPS.length}</div><button onclick="skipTutorial()" style="background:none;border:none;color:#555;font-size:12px;cursor:pointer">${t('tut_skip')}</button></div><div style="font-size:28px;margin-bottom:8px">${s.icon}</div><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px">${t(s.titleKey)}</div><div style="font-size:13px;color:#888;line-height:1.5;margin-bottom:16px">${t(s.descKey)}</div><button onclick="nextTutorialStep()" style="width:100%;padding:12px;background:#1DBA87;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">${tutorialStep<TUTORIAL_STEPS.length-1?t('tut_next'):t('tut_done')}</button></div>`;
   document.body.appendChild(o);
 }
 function nextTutorialStep(){tutorialStep++;showTutorialStep();}
-function skipTutorial(){const p=document.getElementById('tutorial-overlay');if(p)p.remove();safeSet('finko_tutorial_done','1');}
+function skipTutorial(){const p=document.getElementById('tutorial-overlay');if(p)p.remove();safeSet('martifin_tutorial_done','1');}
 
 /* ── SYNC MEJORADO — offline + reconexión ────────────────────────────────── */
 window.addEventListener('online', () => {
@@ -5788,7 +5823,7 @@ window.addEventListener('offline', () => {
 (function initMejoras() {
   // Always init supabaseClient so login/register works
   initSupabaseAuth();
-  const skipA = localStorage.getItem('finko_skip_auth');
+  const skipA = localStorage.getItem('martifin_skip_auth');
   if(skipA) {
     // User previously skipped auth - hide login, go straight to app/onboarding
     hideLoginScreen();
@@ -5799,7 +5834,7 @@ window.addEventListener('offline', () => {
   setTimeout(updateAuthUI, 500);
   // Tutorial for returning users
   setTimeout(() => { 
-    if(!localStorage.getItem('finko_tutorial_done') && localStorage.getItem('finko_onboarded')) startTutorial(); 
+    if(!localStorage.getItem('martifin_tutorial_done') && localStorage.getItem('martifin_onboarded')) startTutorial(); 
   }, 3500);
 })();
 
@@ -6247,14 +6282,14 @@ document.addEventListener('keydown', function(e) {
 
 /* ── TOGGLE SWIPE ENTRE PESTAÑAS ────────────────────────────── */
 function toggleSwipeTabs(enabled) {
-  safeSet('finko_swipe_tabs', enabled ? '1' : '0');
+  safeSet('martifin_swipe_tabs', enabled ? '1' : '0');
   toast(enabled ? (t('toast_swipe_on') || 'Swipe activado ✓')
                 : (t('toast_swipe_off') || 'Swipe desactivado'));
 }
 
 function syncSwipeToggleUI() {
   const cb = document.getElementById('swipe-tabs-toggle');
-  if (cb) cb.checked = (localStorage.getItem('finko_swipe_tabs') === '1');
+  if (cb) cb.checked = (localStorage.getItem('martifin_swipe_tabs') === '1');
 }
 
 document.addEventListener('DOMContentLoaded', syncSwipeToggleUI);
@@ -6284,7 +6319,7 @@ document.addEventListener('DOMContentLoaded', syncSwipeToggleUI);
     if (!swiping) return;
     swiping = false;
 
-    if (localStorage.getItem('finko_swipe_tabs') !== '1') return;
+    if (localStorage.getItem('martifin_swipe_tabs') !== '1') return;
 
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
