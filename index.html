@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v8.7';
+const MARTIFIN_VERSION = 'v8.8';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -264,6 +264,13 @@ const LANG = {
     card_nuevo_gasto: 'Nuevo gasto',
     lbl_descripcion: 'Descripción',
     lbl_monto: 'Monto ($)',
+    lbl_moneda: 'Moneda',
+    lbl_cambio_bcu: 'Cambio BCU hoy:',
+    txt_cambio_editable: '(editable)',
+    txt_consultando_cambio: 'Consultando cambio BCU...',
+    modal_cambio_titulo: 'Ingresá el cambio USD → UYU',
+    modal_cambio_sub: 'No se pudo obtener la cotización automáticamente',
+    toast_cambio_requerido: 'Ingresá un cambio válido para guardar en USD',
     lbl_fecha: 'Fecha',
     lbl_categoria: 'Categoría',
     lbl_subcategoria: 'Subcategoría',
@@ -718,6 +725,13 @@ const LANG = {
     card_nuevo_gasto: 'New expense',
     lbl_descripcion: 'Description',
     lbl_monto: 'Amount ($)',
+    lbl_moneda: 'Currency',
+    lbl_cambio_bcu: 'BCU rate today:',
+    txt_cambio_editable: '(editable)',
+    txt_consultando_cambio: 'Checking BCU rate...',
+    modal_cambio_titulo: 'Enter the USD → UYU rate',
+    modal_cambio_sub: 'Could not fetch the rate automatically',
+    toast_cambio_requerido: 'Enter a valid rate to save in USD',
     lbl_fecha: 'Date',
     lbl_categoria: 'Category',
     lbl_subcategoria: 'Subcategory',
@@ -1137,6 +1151,13 @@ const LANG = {
     card_nuevo_gasto: 'Novo gasto',
     lbl_descripcion: 'Descrição',
     lbl_monto: 'Valor ($)',
+    lbl_moneda: 'Moeda',
+    lbl_cambio_bcu: 'Câmbio BCU hoje:',
+    txt_cambio_editable: '(editável)',
+    txt_consultando_cambio: 'Consultando câmbio BCU...',
+    modal_cambio_titulo: 'Informe o câmbio USD → UYU',
+    modal_cambio_sub: 'Não foi possível obter a cotação automaticamente',
+    toast_cambio_requerido: 'Informe um câmbio válido para salvar em USD',
     lbl_fecha: 'Data',
     lbl_categoria: 'Categoria',
     lbl_subcategoria: 'Subcategoria',
@@ -2202,6 +2223,19 @@ tr:last-child td { border: none; }
           <div class="field"><label data-i18n="lbl_monto">Monto ($)</label><input type="number" id="f-monto" placeholder="0" inputmode="decimal"></div>
           <div class="field"><label data-i18n="lbl_fecha">Fecha</label><input type="date" id="f-fecha"></div>
         </div>
+        <div class="field" style="max-width:130px">
+          <label data-i18n="lbl_moneda">Moneda</label>
+          <select id="f-moneda" onchange="onMonedaChange('f')">
+            <option value="UYU">UYU</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+        <div id="f-cambio-info" style="display:none;align-items:center;gap:8px;margin:-6px 0 12px;font-size:12px;color:var(--text2)">
+          <span id="f-cambio-loader" style="display:none">⏳ <span data-i18n="txt_consultando_cambio">Consultando cambio BCU...</span></span>
+          <span data-i18n="lbl_cambio_bcu">Cambio BCU hoy:</span>
+          <input type="number" id="f-cambio" inputmode="decimal" style="display:none;width:80px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:4px 6px">
+          <span style="opacity:.6" data-i18n="txt_cambio_editable">(editable)</span>
+        </div>
         <div class="field"><label data-i18n="lbl_categoria">Categoría</label>
           <div id="f-cat-hint" class="cat-autodetect-hint"></div>
           <select id="f-cat" onchange="updateSubcat()">
@@ -3034,8 +3068,40 @@ function fmt(n) {
 }
 function pct(n) { return (Math.round(n*1000)/10).toFixed(1)+'%'; }
 
+// Muestra el monto de un gasto en historial: en su moneda original si es
+// UYU (igual que siempre), o con el detalle de conversión si es USD.
+function montoDisplay(g) {
+  if (g.moneda !== 'USD') return fmt(g.monto);
+  return `USD ${g.monto.toLocaleString('es-UY')} → ${fmt(g.monto_uyu)} @ ${g.cambio}`;
+}
+function montoDisplayCompacto(g) {
+  if (g.moneda !== 'USD') return fmt(g.monto);
+  return `USD ${g.monto.toLocaleString('es-UY')} → ${fmt(g.monto_uyu)}`;
+}
+
 let _syncTimer = null;
 var _cloudLoaded = false;  // Flag: true cuando cloudLoad ya terminó (o falló). Previene pisar datos remotos.
+
+/* ── MIGRACIÓN MULTI-MONEDA v8.8 ──────────────────────────────────────────
+ * Gastos viejos no tienen moneda/cambio/monto_uyu. Se asumen cargados en
+ * UYU. Idempotente: si un gasto ya tiene "moneda" definida, no se toca.
+ * Se llama después de cualquier carga de DATA.gastos desde afuera
+ * (localStorage o cloud) para cubrir dispositivos/backups que aún no
+ * migraron.
+ * ─────────────────────────────────────────────────────────────────────── */
+function migrarGastosMonedaV88() {
+  let migrados = 0;
+  (DATA.gastos || []).forEach(g => {
+    if (g.moneda === undefined) {
+      g.moneda = 'UYU';
+      g.cambio = null;
+      g.monto_uyu = g.monto;
+      migrados++;
+    }
+  });
+  if (migrados > 0) console.log('Migración moneda v8.8: ' + migrados + ' gastos migrados a UYU');
+}
+
 function save() {
   const payload = JSON.stringify({...DATA, months: MONTHS});
   safeSet('fpro_v3', payload);
@@ -3063,6 +3129,7 @@ function load() {
       inversiones: p.inversiones || [],
       invTipos: p.invTipos || null
     };
+    migrarGastosMonedaV88();
     if(p.months && p.months.length) MONTHS = p.months;
   } catch(e) {}
 }
@@ -3086,10 +3153,10 @@ function getMesData(mes) {
   if(gl.length) {
     gl.forEach(g => {
       const parent = CAT_PARENT[g.cat] || g.cat;
-      cats[parent] = (cats[parent]||0) + g.monto;
+      cats[parent] = (cats[parent]||0) + g.monto_uyu;
       if(g.subcat) {
         const key = parent + ' > ' + g.subcat;
-        cats[key] = (cats[key]||0) + g.monto;
+        cats[key] = (cats[key]||0) + g.monto_uyu;
       }
     });
   } else if(HIST_CATS[mes]) {
@@ -3097,14 +3164,14 @@ function getMesData(mes) {
   } else if(h.gastos) {
     Object.entries(CAT_DIST).forEach(([k,v]) => { cats[k] = Math.round(h.gastos * v); });
   }
-  const totalGastos = gl.length ? gl.reduce((a,g)=>a+g.monto,0) : (h.gastos || 0);
+  const totalGastos = gl.length ? gl.reduce((a,g)=>a+g.monto_uyu,0) : (h.gastos || 0);
   // Build subcats map: {cat: {subcat: total}}
   const subcatsMap = {};
   gl.forEach(g => {
     const parent = CAT_PARENT[g.cat] || g.cat;
     if(g.subcat) {
       if(!subcatsMap[parent]) subcatsMap[parent] = {};
-      subcatsMap[parent][g.subcat] = (subcatsMap[parent][g.subcat]||0) + g.monto;
+      subcatsMap[parent][g.subcat] = (subcatsMap[parent][g.subcat]||0) + g.monto_uyu;
     }
   });
   // Clean cats: remove compound keys (parent > sub) from top-level cats display
@@ -3234,9 +3301,9 @@ function renderResumenRapido() {
   let gastoHoy = 0, gastoAyer = 0, gastoSemana = 0;
   DATA.gastos.forEach(g => {
     if (!g.fecha) return;
-    if (g.fecha === hoyStr) gastoHoy += g.monto;
-    if (g.fecha === ayerStr) gastoAyer += g.monto;
-    if (g.fecha >= inicioStr && g.fecha <= hoyStr) gastoSemana += g.monto;
+    if (g.fecha === hoyStr) gastoHoy += g.monto_uyu;
+    if (g.fecha === ayerStr) gastoAyer += g.monto_uyu;
+    if (g.fecha >= inicioStr && g.fecha <= hoyStr) gastoSemana += g.monto_uyu;
   });
 
   const totalReciente = gastoHoy + gastoAyer + gastoSemana;
@@ -3367,7 +3434,7 @@ function renderChart() {
   const ing = MONTHS.map(m => { const u=DATA.sueldos[m]; return u?.sueldo ?? HIST[m]?.sueldo ?? 0; });
   const gas = MONTHS.map(m => {
     const gl = DATA.gastos.filter(g=>g.mes===m);
-    return gl.length ? gl.reduce((a,g)=>a+g.monto,0) : (HIST[m]?.gastos??0);
+    return gl.length ? gl.reduce((a,g)=>a+g.monto_uyu,0) : (HIST[m]?.gastos??0);
   });
   const aho = MONTHS.map(m => { const u=DATA.sueldos[m]; return u?.ahorro ?? HIST[m]?.ahorro ?? 0; });
 
@@ -3769,13 +3836,17 @@ function guardarGasto() {
   const subcat = (SUBCATS[cat] && subcatEl.value) ? subcatEl.value : null;
   if(!desc||!fecha||!mes) { toast(t('toast_campos')); return; }
   if(isNaN(monto) || monto <= 0) { toast(t('toast_monto_invalido') || 'El monto debe ser mayor a 0'); return; }
-  DATA.gastos.push({id: Date.now() + Math.floor(Math.random()*1000), desc, monto:Math.round(monto), fecha, cat, subcat, mes});
+  const montoRedondeado = Math.round(monto);
+  const mm = resolverMonedaForm('f', montoRedondeado);
+  if(!mm.valid) { toast(t('toast_cambio_requerido')); return; }
+  DATA.gastos.push({id: Date.now() + Math.floor(Math.random()*1000), desc, monto:montoRedondeado, fecha, cat, subcat, mes, moneda:mm.moneda, cambio:mm.cambio, monto_uyu:mm.monto_uyu});
   save();
   document.getElementById('f-desc').value = '';
   document.getElementById('f-monto').value = '';
   const catSel = document.getElementById('f-cat');
   if (catSel) delete catSel.dataset.userSet;
   if (subcatEl) delete subcatEl.dataset.userSet;
+  resetMonedaForm('f');
   toast(t('toast_gasto_ok'));
   renderQuick();
 }
@@ -4033,10 +4104,10 @@ function abrirHistorialHoras() {
     lista.innerHTML = `<div style="text-align:center;color:var(--text2);font-size:13px;padding:20px 0">${esc(t('hv_historial_vacio'))}</div>`;
   } else {
     lista.innerHTML = gastos.map(g => {
-      const horasTxt = (tarifa && tarifa > 0) ? (g.monto / tarifa).toFixed(1) + 'h' : '—';
-      return `<button onclick="hvSeleccionarGasto(${g.monto})" style="display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:none;border-bottom:0.5px solid var(--border);padding:12px 0;text-align:left;cursor:pointer;color:var(--text);font-family:'DM Sans',sans-serif">
+      const horasTxt = (tarifa && tarifa > 0) ? (g.monto_uyu / tarifa).toFixed(1) + 'h' : '—';
+      return `<button onclick="hvSeleccionarGasto(${g.monto_uyu})" style="display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:none;border-bottom:0.5px solid var(--border);padding:12px 0;text-align:left;cursor:pointer;color:var(--text);font-family:'DM Sans',sans-serif">
         <span style="font-size:13px">${esc(g.desc) || getCatLabel(g.cat)}</span>
-        <span style="text-align:right"><span style="font-size:13px;font-weight:600;display:block">${fmt(g.monto)}</span><span style="font-size:11px;color:var(--teal)">${horasTxt}</span></span>
+        <span style="text-align:right"><span style="font-size:13px;font-weight:600;display:block">${montoDisplayCompacto(g)}</span><span style="font-size:11px;color:var(--teal)">${horasTxt}</span></span>
       </button>`;
     }).join('');
   }
@@ -4268,6 +4339,21 @@ function abrirEdicion(id) {
   ecat.value = g.cat;
   emes.value = g.mes;
   updateEditSubcat(g.subcat);
+
+  // Precargar moneda/cambio sin refetchear — respeta el cambio histórico guardado
+  const eMoneda = document.getElementById('e-moneda');
+  const eCambioInfo = document.getElementById('e-cambio-info');
+  const eCambioInput = document.getElementById('e-cambio');
+  const eCambioLoader = document.getElementById('e-cambio-loader');
+  if (eMoneda) eMoneda.value = g.moneda || 'UYU';
+  if (g.moneda === 'USD') {
+    if (eCambioLoader) eCambioLoader.style.display = 'none';
+    if (eCambioInfo) eCambioInfo.style.display = 'flex';
+    if (eCambioInput) { eCambioInput.value = g.cambio || ''; eCambioInput.style.display = 'inline-block'; }
+  } else if (eCambioInfo) {
+    eCambioInfo.style.display = 'none';
+  }
+
   document.getElementById('edit-modal').style.display = 'flex';
 }
 
@@ -4295,14 +4381,20 @@ function guardarEdicion() {
   if(idx===-1) return;
   const cat = document.getElementById('e-cat').value;
   const subcatEl = document.getElementById('e-subcat');
+  const montoRedondeado = Math.round(parseFloat(document.getElementById('e-monto').value)||0);
+  const mm = resolverMonedaForm('e', montoRedondeado);
+  if(!mm.valid) { toast(t('toast_cambio_requerido')); return; }
   DATA.gastos[idx] = {
     ...DATA.gastos[idx],
     desc: document.getElementById('e-desc').value.trim(),
-    monto: Math.round(parseFloat(document.getElementById('e-monto').value)||0),
+    monto: montoRedondeado,
     fecha: document.getElementById('e-fecha').value,
     cat,
     subcat: (SUBCATS[cat] && subcatEl.value) ? subcatEl.value : null,
     mes: document.getElementById('e-mes').value,
+    moneda: mm.moneda,
+    cambio: mm.cambio,
+    monto_uyu: mm.monto_uyu
   };
   save(); cerrarEdicion(); renderHistorial(); toast(t('toast_gasto_upd'));
 }
@@ -4320,7 +4412,7 @@ function renderPresupuestoInputs() {
   const genInput = document.getElementById('p-general');
   if(genInput) genInput.value = genVal || '';
 
-  const gastosMes = DATA.gastos.filter(g=>g.mes===mes).reduce((a,g)=>a+g.monto,0);
+  const gastosMes = DATA.gastos.filter(g=>g.mes===mes).reduce((a,g)=>a+g.monto_uyu,0);
   const resumen = document.getElementById('p-general-resumen');
   if(resumen && genVal > 0) {
     resumen.style.display = 'block';
@@ -4418,7 +4510,7 @@ function renderWeeklyChart(mes, items) {
     if(!g.fecha) return;
     const day = parseInt(g.fecha.split('-')[2]||'1');
     const w = Math.min(Math.floor((day-1)/7), 4);
-    weeks[w] += g.monto;
+    weeks[w] += g.monto_uyu;
   });
   const s = t('lbl_semana_abbr');
   const labels = [s+' 1',s+' 2',s+' 3',s+' 4',s+' 5'];
@@ -4454,7 +4546,7 @@ function renderHistorial() {
     return true;
   });
   items = items.slice().sort((a,b) => b.fecha.localeCompare(a.fecha));
-  const total = items.reduce((a,g)=>a+g.monto,0);
+  const total = items.reduce((a,g)=>a+g.monto_uyu,0);
   document.getElementById('h-summary').textContent = items.length
     ? `${items.length} ${t('lbl_historial_sep')} ${fmt(total)}`
     : '';
@@ -4495,7 +4587,7 @@ function renderHistorial() {
           <span style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.desc)}</span>
         </div>
       </td>
-      <td style="padding:6px 4px;text-align:right;font-weight:500;font-family:'DM Mono',monospace;font-size:12px;white-space:nowrap">${fmt(g.monto)}</td>
+      <td style="padding:6px 4px;text-align:right;font-weight:500;font-family:'DM Mono',monospace;font-size:12px;white-space:nowrap">${montoDisplayCompacto(g)}</td>
       <td style="padding:6px 4px;text-align:right">
         <button class="btn-danger-sm" style="color:var(--blue);border-color:var(--border2);font-size:11px;padding:3px 6px" onclick="abrirEdicion(${g.id})">✏</button>
       </td></tr>`).join('');
@@ -4504,7 +4596,7 @@ function renderHistorial() {
       <td style="color:var(--text2);font-size:12px;white-space:nowrap">${g.fecha.slice(5)}</td>
       <td><div style="font-size:13px;font-weight:500">${esc(g.desc)}</div>
         <div style="font-size:11px;color:${CAT_COLOR[g.cat]||'#888'}">${getCatLabel(g.cat)}${g.subcat?' › '+esc(g.subcat):''}</div></td>
-      <td style="text-align:right;font-weight:500;font-family:'DM Mono',monospace;font-size:13px;white-space:nowrap">${fmt(g.monto)}</td>
+      <td style="text-align:right;font-weight:500;font-family:'DM Mono',monospace;font-size:13px;white-space:nowrap">${montoDisplay(g)}</td>
       <td style="padding:4px 0">
         <div class="hist-actions">
           <button class="btn-danger-sm" style="color:var(--teal);border-color:var(--border2)" onclick="duplicarGasto(${g.id})" title="Duplicar">⧉</button>
@@ -4526,11 +4618,27 @@ function toggleHistCompacto() {
 }
 
 /* ── DUPLICAR GASTO ──────────────────────────────────────────────────────── */
-function duplicarGasto(id) {
+async function duplicarGasto(id) {
   const g = DATA.gastos.find(x => x.id === id);
   if (!g) return;
   const hoy = new Date().toISOString().slice(0,10);
   const mesActual = selMes || g.mes;
+
+  // El duplicado queda fechado hoy: si el original es USD, se resuelve el
+  // cambio de HOY (no se copia el histórico viejo) — es un gasto nuevo.
+  let moneda = g.moneda || 'UYU';
+  let cambio = null;
+  let monto_uyu = g.monto;
+  if (moneda === 'USD') {
+    let cambioResuelto = await obtenerCambioUSD(hoy);
+    if (cambioResuelto == null) {
+      cambioResuelto = await new Promise(resolve => abrirCambioManual(null, resolve));
+    }
+    if (cambioResuelto == null) { toast(t('toast_cambio_requerido')); return; }
+    cambio = cambioResuelto;
+    monto_uyu = Math.round(g.monto * cambio);
+  }
+
   DATA.gastos.push({
     id: Date.now() + Math.floor(Math.random()*1000),
     desc: g.desc,
@@ -4538,7 +4646,8 @@ function duplicarGasto(id) {
     fecha: hoy,
     cat: g.cat,
     subcat: g.subcat,
-    mes: mesActual
+    mes: mesActual,
+    moneda, cambio, monto_uyu
   });
   save();
   if (navigator.vibrate) navigator.vibrate(15);
@@ -4954,8 +5063,8 @@ function renderHogar() {
   const setT=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   setT('hogar-mi-nombre',mn); setT('hogar-su-nombre',sn); setT('hogar-mes-label',selMes);
   const gm=DATA.gastos.filter(g=>g.mes===selMes);
-  const miT=gm.filter(g=>!g.persona||g.persona==='mi').reduce((a,g)=>a+g.monto,0);
-  const suT=gm.filter(g=>g.persona==='su').reduce((a,g)=>a+g.monto,0);
+  const miT=gm.filter(g=>!g.persona||g.persona==='mi').reduce((a,g)=>a+g.monto_uyu,0);
+  const suT=gm.filter(g=>g.persona==='su').reduce((a,g)=>a+g.monto_uyu,0);
   const tot=miT+suT;
   setT('hogar-mi-total',fmt(miT)); setT('hogar-su-total',fmt(suT)); setT('hogar-total',fmt(tot));
   const mp=tot>0?Math.round(miT/tot*100):50;
@@ -5042,6 +5151,7 @@ function applyCloudData(p) {
     metas: p.metas||DATA.metas,
     gastosAhorros: p.gastosAhorros||[], retirosInversion: p.retirosInversion||[], inversiones: p.inversiones||[], invTipos: p.invTipos||null
   };
+  migrarGastosMonedaV88();
   // Override HIST with cloud data for months that have been manually edited
   if(p.sueldos) {
     Object.entries(p.sueldos).forEach(([mes, val]) => {
@@ -5480,16 +5590,16 @@ function _buildExcelSheets() {
     ? { Fecha:'Date', Mes:'Month', MesISO:'MonthISO', Categoria:'Category', Subcategoria:'Subcategory',
         Descripcion:'Description', Monto:'Amount', Nombre:'Name', Objetivo:'Goal',
         Tipo:'Type', TipoMov:'Movement type', Motivo:'Reason',
-        Aporte:'Contribution', Retiro:'Withdrawal' }
+        Aporte:'Contribution', Retiro:'Withdrawal', Moneda:'Currency', MontoOriginal:'Original amount' }
     : (lang === 'pt')
     ? { Fecha:'Data', Mes:'Mês', MesISO:'MêsISO', Categoria:'Categoria', Subcategoria:'Subcategoria',
         Descripcion:'Descrição', Monto:'Valor', Nombre:'Nome', Objetivo:'Meta',
         Tipo:'Tipo', TipoMov:'Tipo de movimento', Motivo:'Motivo',
-        Aporte:'Aporte', Retiro:'Retirada' }
+        Aporte:'Aporte', Retiro:'Retirada', Moneda:'Moeda', MontoOriginal:'Valor original' }
     : { Fecha:'Fecha', Mes:'Mes', MesISO:'MesISO', Categoria:'Categoría', Subcategoria:'Subcategoría',
         Descripcion:'Descripción', Monto:'Monto', Nombre:'Nombre', Objetivo:'Objetivo',
         Tipo:'Tipo', TipoMov:'Tipo de movimiento', Motivo:'Motivo',
-        Aporte:'Aporte', Retiro:'Retiro' };
+        Aporte:'Aporte', Retiro:'Retiro', Moneda:'Moneda', MontoOriginal:'Monto original' };
 
   const gastosRows = (DATA.gastos || []).map(g => ({
     [H.Fecha]: g.fecha || '',
@@ -5498,7 +5608,9 @@ function _buildExcelSheets() {
     [H.Categoria]: g.cat || '',
     [H.Subcategoria]: g.subcat || '',
     [H.Descripcion]: g.desc || '',
-    [H.Monto]: g.monto || 0
+    [H.Monto]: g.monto_uyu || 0,
+    [H.Moneda]: g.moneda || 'UYU',
+    [H.MontoOriginal]: g.monto || 0
   }));
 
   const sueldosRows = Object.entries(DATA.sueldos || {}).map(([mes, monto]) => ({
@@ -6390,6 +6502,20 @@ window.addEventListener('offline', () => {
       <input type="number" id="qf-monto" placeholder="0" inputmode="decimal">
     </div>
 
+    <div class="field" style="max-width:130px">
+      <label data-i18n="lbl_moneda">Moneda</label>
+      <select id="qf-moneda" onchange="onMonedaChange('qf')">
+        <option value="UYU">UYU</option>
+        <option value="USD">USD</option>
+      </select>
+    </div>
+    <div id="qf-cambio-info" style="display:none;align-items:center;gap:8px;margin:-6px 0 12px;font-size:12px;color:var(--text2)">
+      <span id="qf-cambio-loader" style="display:none">⏳ <span data-i18n="txt_consultando_cambio">Consultando cambio BCU...</span></span>
+      <span data-i18n="lbl_cambio_bcu">Cambio BCU hoy:</span>
+      <input type="number" id="qf-cambio" inputmode="decimal" style="display:none;width:80px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:4px 6px">
+      <span style="opacity:.6" data-i18n="txt_cambio_editable">(editable)</span>
+    </div>
+
     <div class="field">
       <label data-i18n="lbl_categoria">Categoría</label>
       <select id="qf-cat" onchange="this.dataset.userSet='1';actualizarQfSubcat()"></select>
@@ -6464,6 +6590,19 @@ window.addEventListener('offline', () => {
     <div class="row2">
       <div class="field"><label data-i18n="lbl_monto">Monto ($)</label><input type="number" id="e-monto" inputmode="decimal"></div>
       <div class="field"><label data-i18n="lbl_fecha">Fecha</label><input type="date" id="e-fecha"></div>
+    </div>
+    <div class="field" style="max-width:130px">
+      <label data-i18n="lbl_moneda">Moneda</label>
+      <select id="e-moneda" onchange="onMonedaChange('e')">
+        <option value="UYU">UYU</option>
+        <option value="USD">USD</option>
+      </select>
+    </div>
+    <div id="e-cambio-info" style="display:none;align-items:center;gap:8px;margin:-6px 0 12px;font-size:12px;color:var(--text2)">
+      <span id="e-cambio-loader" style="display:none">⏳ <span data-i18n="txt_consultando_cambio">Consultando cambio BCU...</span></span>
+      <span data-i18n="lbl_cambio_bcu">Cambio BCU hoy:</span>
+      <input type="number" id="e-cambio" inputmode="decimal" style="display:none;width:80px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:4px 6px">
+      <span style="opacity:.6" data-i18n="txt_cambio_editable">(editable)</span>
     </div>
     <div class="field"><label data-i18n="lbl_categoria">Categoría</label>
       <select id="e-cat" onchange="updateEditSubcat()"></select>
@@ -6652,6 +6791,7 @@ function abrirGastoRapido() {
   document.getElementById('qf-desc').value = '';
   document.getElementById('qf-monto').value = '';
   document.getElementById('qf-fecha').value = todayStr;
+  resetMonedaForm('qf');
 
   actualizarQfSubcat();
 
@@ -6749,12 +6889,17 @@ function guardarGastoRapido() {
     toast(t('toast_monto_invalido') || 'El monto debe ser mayor a 0');
     return;
   }
+  const montoRedondeado = Math.round(monto);
+  const mm = resolverMonedaForm('qf', montoRedondeado);
+  if (!mm.valid) { toast(t('toast_cambio_requerido')); return; }
 
   DATA.gastos.push({
     id: Date.now() + Math.floor(Math.random() * 1000),
-    desc, monto: Math.round(monto), fecha, cat, subcat, mes
+    desc, monto: montoRedondeado, fecha, cat, subcat, mes,
+    moneda: mm.moneda, cambio: mm.cambio, monto_uyu: mm.monto_uyu
   });
   save();
+  resetMonedaForm('qf');
 
   cerrarGastoRapido(true);
   toast(t('toast_gasto_ok'));
@@ -6847,6 +6992,19 @@ document.addEventListener('DOMContentLoaded', syncSwipeToggleUI);
 </script>
 
 
+<!-- ── MODAL CAMBIO USD MANUAL ──────────────────────────────────────────── -->
+<div id="cambio-manual-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:800;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);padding:24px;width:100%;max-width:340px">
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px" data-i18n="modal_cambio_titulo">Ingresá el cambio USD → UYU</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px" data-i18n="modal_cambio_sub">No se pudo obtener la cotización automáticamente</div>
+    <input type="number" id="cambio-manual-input" inputmode="decimal" placeholder="41,20" style="width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-family:'DM Mono',monospace;font-size:16px;padding:12px;margin-bottom:16px;text-align:center">
+    <div style="display:flex;gap:10px">
+      <button onclick="cerrarCambioManual()" style="flex:1;padding:13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:14px;font-weight:500;cursor:pointer" data-i18n="lbl_cancelar">Cancelar</button>
+      <button onclick="confirmarCambioManual()" style="flex:1;padding:13px;background:var(--teal);border:none;border-radius:var(--r-sm);color:#fff;font-size:14px;font-weight:600;cursor:pointer" data-i18n="lbl_guardar">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── CONFIRM MODAL PERSONALIZADO ──────────────────────────────────────── -->
 <div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:700;align-items:center;justify-content:center;padding:20px">
   <div style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);padding:28px 24px;width:100%;max-width:340px;text-align:center">
@@ -6895,6 +7053,127 @@ function showConfirm(msg, callback) {
 function hideConfirm() {
   document.getElementById('confirm-modal').style.display = 'none';
   _confirmCallback = null;
+}
+
+/* ── MULTI-MONEDA: cambio USD → UYU ───────────────────────────────────────
+ * Fuente: uy.dolarapi.com (JSON, CORS abierto, datos BCU). Solo se resuelve
+ * automáticamente para la cotización de HOY (no hay serie histórica
+ * gratuita); para fechas pasadas se pide directamente input manual.
+ * Cache diario en localStorage: martifin_cambio_bcu_YYYY-MM-DD.
+ * ─────────────────────────────────────────────────────────────────────── */
+let _cambioManualCallback = null;
+
+async function fetchCambioUSDHoy() {
+  const hoy = new Date().toISOString().slice(0,10);
+  const cacheKey = 'martifin_cambio_bcu_' + hoy;
+  const cached = localStorage.getItem(cacheKey);
+  if(cached && !isNaN(parseFloat(cached))) return parseFloat(cached);
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch('https://uy.dolarapi.com/v1/cotizaciones', { signal: ctrl.signal });
+    clearTimeout(timer);
+    if(!res.ok) return null;
+    const data = await res.json();
+    const usd = (data || []).find(c => c.moneda === 'USD');
+    if(!usd || !usd.venta) return null;
+    safeSet(cacheKey, String(usd.venta));
+    return usd.venta;
+  } catch(e) {
+    console.warn('fetchCambioUSDHoy falló:', e.message);
+    return null;
+  }
+}
+
+// Devuelve el cambio USD→UYU para un gasto de fecha "fechaGasto" (YYYY-MM-DD),
+// o null si no se pudo resolver automáticamente (fecha pasada, o fetch/caché
+// de hoy fallaron) — el caller debe pedir input manual en ese caso.
+async function obtenerCambioUSD(fechaGasto) {
+  const hoy = new Date().toISOString().slice(0,10);
+  if(fechaGasto !== hoy) return null;
+  return await fetchCambioUSDHoy();
+}
+
+function abrirCambioManual(sugerido, callback) {
+  _cambioManualCallback = callback;
+  const input = document.getElementById('cambio-manual-input');
+  input.value = sugerido != null ? sugerido : '';
+  document.getElementById('cambio-manual-modal').style.display = 'flex';
+}
+function cerrarCambioManual() {
+  document.getElementById('cambio-manual-modal').style.display = 'none';
+  const cb = _cambioManualCallback;
+  _cambioManualCallback = null;
+  if(cb) cb(null);
+}
+function confirmarCambioManual() {
+  const val = parseFloat(document.getElementById('cambio-manual-input').value);
+  if(isNaN(val) || val <= 0) { toast(t('toast_cambio_requerido')); return; }
+  document.getElementById('cambio-manual-modal').style.display = 'none';
+  const cb = _cambioManualCallback;
+  _cambioManualCallback = null;
+  if(cb) cb(val);
+}
+
+// Orquesta la resolución del cambio para el formulario de gasto identificado
+// por "prefix" ('f', 'qf' o 'e'): muestra loader, intenta automático, y si
+// falla abre el modal manual. Deja el resultado en #<prefix>-cambio.
+async function resolverCambioForm(prefix, fecha) {
+  const info = document.getElementById(prefix + '-cambio-info');
+  const loader = document.getElementById(prefix + '-cambio-loader');
+  const inputCambio = document.getElementById(prefix + '-cambio');
+  if(!info) return;
+  info.style.display = 'flex';
+  if(loader) loader.style.display = 'inline';
+  if(inputCambio) inputCambio.style.display = 'none';
+  const auto = await obtenerCambioUSD(fecha);
+  if(loader) loader.style.display = 'none';
+  if(auto != null) {
+    if(inputCambio) { inputCambio.value = auto; inputCambio.style.display = 'inline-block'; }
+  } else {
+    abrirCambioManual(null, function(valorManual) {
+      if(valorManual != null) {
+        if(inputCambio) { inputCambio.value = valorManual; inputCambio.style.display = 'inline-block'; }
+      } else {
+        const sel = document.getElementById(prefix + '-moneda');
+        if(sel) sel.value = 'UYU';
+        info.style.display = 'none';
+      }
+    });
+  }
+}
+
+// Handler del <select> de moneda de cada formulario de gasto.
+function onMonedaChange(prefix) {
+  const sel = document.getElementById(prefix + '-moneda');
+  const info = document.getElementById(prefix + '-cambio-info');
+  if(!sel || sel.value !== 'USD') { if(info) info.style.display = 'none'; return; }
+  const fechaInput = document.getElementById(prefix + '-fecha');
+  const fecha = (fechaInput && fechaInput.value) || new Date().toISOString().slice(0,10);
+  resolverCambioForm(prefix, fecha);
+}
+
+// Lee moneda/cambio del formulario con prefijo "prefix" ('f','qf','e') y
+// devuelve {valid, moneda, cambio, monto_uyu} a partir del monto ya
+// redondeado en la moneda original. valid=false si es USD y todavía no
+// hay un cambio resuelto (fetch/manual en curso) — el caller no debe guardar.
+function resolverMonedaForm(prefix, montoRedondeado) {
+  const monedaSel = document.getElementById(prefix + '-moneda');
+  const moneda = (monedaSel && monedaSel.value === 'USD') ? 'USD' : 'UYU';
+  if(moneda === 'UYU') return { valid: true, moneda, cambio: null, monto_uyu: montoRedondeado };
+  const cambioInput = document.getElementById(prefix + '-cambio');
+  const cambio = parseFloat(cambioInput && cambioInput.value);
+  if(isNaN(cambio) || cambio <= 0) return { valid: false };
+  return { valid: true, moneda, cambio, monto_uyu: Math.round(montoRedondeado * cambio) };
+}
+
+// Resetea el selector de moneda + info de cambio de un formulario a su
+// estado por defecto (UYU), para el próximo gasto a cargar.
+function resetMonedaForm(prefix) {
+  const sel = document.getElementById(prefix + '-moneda');
+  if(sel) sel.value = 'UYU';
+  const info = document.getElementById(prefix + '-cambio-info');
+  if(info) info.style.display = 'none';
 }
 </script>
 
