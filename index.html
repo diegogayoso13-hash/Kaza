@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v8.6';
+const MARTIFIN_VERSION = 'v8.7';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -204,6 +204,7 @@ const LANG = {
     nav_metas: 'Metas',
     nav_tendencias: 'Tendencias',
     nav_categorias: 'Categorías',
+    nav_horas_vida: 'Horas de Vida',
     nav_ajustes: 'Ajustes',
     drawer_finance: 'Finanzas',
     drawer_preferences: 'Preferencias',
@@ -633,6 +634,31 @@ const LANG = {
     tut_t5: 'Definí tus metas', tut_d5: 'Poné un objetivo de ahorro y mirá tu progreso.',
     // Sync
     sync_error: 'Error de sincronización', sync_offline: 'Sin conexión — modo offline',
+    // Horas de vida
+    hv_page_title: 'Calculadora de horas de vida',
+    hv_page_desc: 'Basado en "La bolsa o la vida" de Vicki Robin: tu hora real no es tu sueldo por hora. Es tu sueldo neto de gastos de trabajo, dividido por todas las horas que el trabajo te consume — incluyendo viajes, prepararte y descomprimir.',
+    hv_sin_sueldo: 'Cargá tu sueldo del mes primero para calcular tu hora real.',
+    hv_ir_a_cargar: 'Ir a Cargar',
+    hv_config_titulo: 'Configurar tu tarifa real',
+    hv_lbl_sueldo: 'Sueldo mensual ($)',
+    hv_sueldo_auto_hint: 'Se actualiza solo con el sueldo del mes actual.',
+    hv_sueldo_manual_hint: 'Editado a mano — ya no se actualiza solo.',
+    hv_sueldo_reset_link: 'Volver a usar el sueldo del mes',
+    hv_toast_sueldo_reset: 'Sueldo vuelve a actualizarse solo',
+    hv_lbl_horas_trabajo: 'Horas de trabajo/semana',
+    hv_lbl_horas_extra: 'Horas extra/semana',
+    hv_hint_horas_extra: 'Viaje, prepararte y descomprimir después del trabajo.',
+    hv_lbl_gastos_trabajo: 'Gastos mensuales ligados al trabajo ($)',
+    hv_lbl_tarifa_real: 'Tu hora real vale',
+    hv_por_hora_suffix: '/hora',
+    hv_warning_tarifa_negativa: 'Tus gastos de trabajo superan tu sueldo — revisá los números.',
+    hv_calc_titulo: 'Calcular un gasto',
+    hv_lbl_monto_gasto: 'Monto del gasto ($)',
+    hv_resultado_horas: 'Esto te cuesta {h} horas de vida',
+    hv_resultado_dias: '= {d} días de trabajo',
+    hv_btn_historial: 'Calcular desde el Historial',
+    hv_historial_titulo: 'Últimos gastos',
+    hv_historial_vacio: 'Todavía no cargaste ningún gasto.',
   },
 
   en: {
@@ -644,6 +670,7 @@ const LANG = {
     nav_metas: 'Goals',
     nav_tendencias: 'Trends',
     nav_categorias: 'Categories',
+    nav_horas_vida: 'Life Hours',
     nav_ajustes: 'Settings',
     drawer_finance: 'Finance',
     drawer_preferences: 'Preferences',
@@ -1026,6 +1053,31 @@ const LANG = {
     priv_contact: 'Contact: hola@martifin.com', priv_response: 'We respond within 48 hours.',
     btn_ver_tutorial: 'View app tutorial',
     sync_error: 'Sync error', sync_offline: 'No connection — offline mode',
+    // Life hours
+    hv_page_title: 'Life Hours Calculator',
+    hv_page_desc: 'Based on "Your Money or Your Life" by Vicki Robin: your real hour isn\'t your hourly wage. It\'s your salary net of work-related expenses, divided by all the hours work actually consumes — including commuting, getting ready and decompressing.',
+    hv_sin_sueldo: 'Log this month\'s salary first to calculate your real hour.',
+    hv_ir_a_cargar: 'Go to Add',
+    hv_config_titulo: 'Set your real rate',
+    hv_lbl_sueldo: 'Monthly salary ($)',
+    hv_sueldo_auto_hint: 'Auto-updates with this month\'s salary.',
+    hv_sueldo_manual_hint: 'Manually edited — no longer auto-updates.',
+    hv_sueldo_reset_link: 'Use this month\'s salary again',
+    hv_toast_sueldo_reset: 'Salary will auto-update again',
+    hv_lbl_horas_trabajo: 'Formal work hours/week',
+    hv_lbl_horas_extra: 'Extra work-related hours/week',
+    hv_hint_horas_extra: 'Commute, getting ready, and decompressing after work.',
+    hv_lbl_gastos_trabajo: 'Monthly work-related expenses ($)',
+    hv_lbl_tarifa_real: 'Your real hour is worth',
+    hv_por_hora_suffix: '/hour',
+    hv_warning_tarifa_negativa: 'Your work expenses exceed your salary — check the numbers.',
+    hv_calc_titulo: 'Calculate an expense',
+    hv_lbl_monto_gasto: 'Expense amount ($)',
+    hv_resultado_horas: 'This costs you {h} hours of life',
+    hv_resultado_dias: '= {d} work days',
+    hv_btn_historial: 'Calculate from History',
+    hv_historial_titulo: 'Recent expenses',
+    hv_historial_vacio: 'You haven\'t logged any expenses yet.',
   },
 
   pt: {
@@ -1037,6 +1089,7 @@ const LANG = {
     nav_metas: 'Metas',
     nav_tendencias: 'Tendências',
     nav_categorias: 'Categorias',
+    nav_horas_vida: 'Horas de Vida',
     nav_ajustes: 'Ajustes',
     drawer_finance: 'Finanças',
     drawer_preferences: 'Preferências',
@@ -1419,6 +1472,31 @@ const LANG = {
     priv_contact: 'Contato: hola@martifin.com', priv_response: 'Respondemos em 48 horas.',
     btn_ver_tutorial: 'Ver tutorial do app',
     sync_error: 'Erro de sincronização', sync_offline: 'Sem conexão — modo offline',
+    // Horas de vida
+    hv_page_title: 'Calculadora de horas de vida',
+    hv_page_desc: 'Baseado em "Sua Grana ou Sua Vida" de Vicki Robin: sua hora real não é seu salário por hora. É seu salário líquido de gastos ligados ao trabalho, dividido por todas as horas que o trabalho consome — incluindo deslocamento, se arrumar e descomprimir.',
+    hv_sin_sueldo: 'Cadastre seu salário do mês primeiro para calcular sua hora real.',
+    hv_ir_a_cargar: 'Ir para Adicionar',
+    hv_config_titulo: 'Configurar sua tarifa real',
+    hv_lbl_sueldo: 'Salário mensal ($)',
+    hv_sueldo_auto_hint: 'Atualiza sozinho com o salário do mês atual.',
+    hv_sueldo_manual_hint: 'Editado manualmente — não atualiza mais sozinho.',
+    hv_sueldo_reset_link: 'Voltar a usar o salário do mês',
+    hv_toast_sueldo_reset: 'Salário volta a atualizar sozinho',
+    hv_lbl_horas_trabajo: 'Horas de trabalho/semana',
+    hv_lbl_horas_extra: 'Horas extras/semana',
+    hv_hint_horas_extra: 'Deslocamento, se arrumar e descomprimir depois do trabalho.',
+    hv_lbl_gastos_trabajo: 'Gastos mensais ligados ao trabalho ($)',
+    hv_lbl_tarifa_real: 'Sua hora real vale',
+    hv_por_hora_suffix: '/hora',
+    hv_warning_tarifa_negativa: 'Seus gastos de trabalho superam seu salário — revise os números.',
+    hv_calc_titulo: 'Calcular um gasto',
+    hv_lbl_monto_gasto: 'Valor do gasto ($)',
+    hv_resultado_horas: 'Isso custa {h} horas de vida',
+    hv_resultado_dias: '= {d} dias de trabalho',
+    hv_btn_historial: 'Calcular pelo Histórico',
+    hv_historial_titulo: 'Últimos gastos',
+    hv_historial_vacio: 'Você ainda não registrou nenhum gasto.',
   }
 };
 
@@ -2496,6 +2574,73 @@ tr:last-child td { border: none; }
     </div>
   </div>
 
+  <!-- HORAS DE VIDA -->
+  <div id="pg-horas-vida" class="page">
+
+    <div class="card" style="border-color:var(--teal)">
+      <div style="font-size:10px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px" data-i18n="hv_page_title">Calculadora de horas de vida</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.5" data-i18n="hv_page_desc">Basado en "La bolsa o la vida" de Vicki Robin: tu hora real no es tu sueldo por hora. Es tu sueldo neto de gastos de trabajo, dividido por todas las horas que el trabajo te consume — incluyendo viajes, prepararte y descomprimir.</div>
+    </div>
+
+    <div class="card" id="hv-sin-sueldo" style="display:none;border-color:var(--amber)">
+      <div style="font-size:13px;color:var(--amber);margin-bottom:14px" data-i18n="hv_sin_sueldo">Cargá tu sueldo del mes primero para calcular tu hora real.</div>
+      <button class="btn" style="background:var(--amber-dim);color:var(--amber);border:0.5px solid var(--amber)" onclick="navTo('cargar')"><span data-i18n="hv_ir_a_cargar">Ir a Cargar</span></button>
+    </div>
+
+    <div id="hv-contenido" style="display:none">
+
+      <div class="collapsible-group open" id="group-hv-config">
+        <button class="group-header" onclick="toggleGroup(this)">
+          <span>⚙ <span data-i18n="hv_config_titulo">Configurar tu tarifa real</span></span>
+          <span class="group-chevron">▶</span>
+        </button>
+        <div class="group-content">
+          <div class="card">
+            <div class="field">
+              <label data-i18n="hv_lbl_sueldo">Sueldo mensual ($)</label>
+              <input type="number" id="hv-sueldo" placeholder="0" inputmode="decimal" oninput="onHvSueldoInput()">
+              <div id="hv-sueldo-auto-hint" style="display:none;font-size:11px;color:var(--text3);margin-top:6px" data-i18n="hv_sueldo_auto_hint">Se actualiza solo con el sueldo del mes actual.</div>
+              <div id="hv-sueldo-manual-hint" style="display:none;font-size:11px;color:var(--text3);margin-top:6px">
+                <span data-i18n="hv_sueldo_manual_hint">Editado a mano — ya no se actualiza solo.</span>
+                <a href="#" onclick="event.preventDefault();hvResetSueldoAuto()" style="color:var(--amber);text-decoration:none;margin-left:4px" data-i18n="hv_sueldo_reset_link">Volver a usar el sueldo del mes</a>
+              </div>
+            </div>
+            <div class="row2">
+              <div class="field"><label data-i18n="hv_lbl_horas_trabajo">Horas de trabajo/semana</label><input type="number" id="hv-horas-trabajo" placeholder="40" inputmode="decimal" oninput="guardarConfigHorasVida()"></div>
+              <div class="field"><label data-i18n="hv_lbl_horas_extra">Horas extra/semana</label><input type="number" id="hv-horas-extra" placeholder="10" inputmode="decimal" oninput="guardarConfigHorasVida()"></div>
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin:-8px 0 14px;line-height:1.4" data-i18n="hv_hint_horas_extra">Viaje, prepararte y descomprimir después del trabajo.</div>
+            <div class="field">
+              <label data-i18n="hv_lbl_gastos_trabajo">Gastos mensuales ligados al trabajo ($)</label>
+              <input type="number" id="hv-gastos-trabajo" placeholder="0" inputmode="decimal" oninput="guardarConfigHorasVida()">
+            </div>
+            <div style="text-align:center;padding-top:14px;border-top:0.5px solid var(--border)">
+              <div style="font-size:11px;color:var(--text2);margin-bottom:4px" data-i18n="hv_lbl_tarifa_real">Tu hora real vale</div>
+              <div id="hv-tarifa-real" style="font-size:28px;font-weight:700;color:var(--teal)">—</div>
+              <div id="hv-tarifa-warning" style="display:none;font-size:12px;color:var(--red);margin-top:8px" data-i18n="hv_warning_tarifa_negativa">Tus gastos de trabajo superan tu sueldo — revisá los números.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-featured">
+        <div class="card-title"><span data-i18n="hv_calc_titulo">Calcular un gasto</span></div>
+        <div class="field">
+          <label data-i18n="hv_lbl_monto_gasto">Monto del gasto ($)</label>
+          <input type="number" id="hv-monto-gasto" placeholder="0" inputmode="decimal" oninput="calcularGastoHoras()">
+        </div>
+        <div id="hv-resultado" style="display:none;text-align:center;padding:16px 0;border-top:0.5px solid var(--border);margin-top:6px">
+          <div id="hv-resultado-horas" style="font-size:24px;font-weight:700;color:var(--teal)"></div>
+          <div id="hv-resultado-dias" style="display:none;font-size:13px;color:var(--text2);margin-top:4px"></div>
+          <div id="hv-frase" style="font-size:12px;color:var(--text2);font-style:italic;margin-top:14px;line-height:1.5"></div>
+        </div>
+        <button class="btn" style="background:transparent;border:0.5px solid var(--border2);color:var(--text2);margin-top:10px" onclick="abrirHistorialHoras()"><span data-i18n="hv_btn_historial">Calcular desde el Historial</span></button>
+      </div>
+
+    </div><!-- /hv-contenido -->
+
+  </div>
+
       <!-- AJUSTES -->
     <div id="pg-ajustes" class="page">
 
@@ -2692,6 +2837,9 @@ tr:last-child td { border: none; }
     </button>
     <button class="drawer-btn" onclick="closeDrawer(); navTo('categorias', null)">
       <span class="nav-icon">⊛</span><span data-i18n="nav_categorias">Categorías</span>
+    </button>
+    <button class="drawer-btn" onclick="closeDrawer(); navTo('horas-vida', null)">
+      <span class="nav-icon">⏳</span><span data-i18n="nav_horas_vida">Horas de Vida</span>
     </button>
   </div>
 
@@ -3025,6 +3173,7 @@ async function navTo(pg, btn, direction) {
   if(pg==='tendencias') renderTendencias();
   if(pg==='categorias') { initCatMesSel(); renderCatAnalisis(); }
   if(pg==='cargar') resetGruposCargar();
+  if(pg==='horas-vida') renderHorasVida();
 }
 
 /* ── MONTH SCROLL ───────────────────────────────────────────────────────── */
@@ -3694,6 +3843,215 @@ function renderExtras(mes) {
 function borrarGasto(id) {
   DATA.gastos = DATA.gastos.filter(g => g.id !== id);
   save(); renderHistorial(); toast(t('toast_gasto_del'));
+}
+
+/* ── CALCULADORA HORAS DE VIDA ────────────────────────────────────────────
+ * Fórmula de Vicki Robin ("La bolsa o la vida"): la tarifa real de una hora
+ * de vida no es sueldo/hora — es sueldo neto de gastos de trabajo, sobre
+ * todas las horas que el trabajo consume (incluye commute/prepararse/decompresión).
+ */
+const HV_CONFIG_KEY = 'martifin_hora_vida_config';
+const HV_FRASES = {
+  es: [
+    'El dinero es la energía de tu vida que intercambiás por él.',
+    '¿Vale este gasto las horas de vida que te costó?',
+    'Cada peso gastado es tiempo que no volverá.',
+    'La verdadera riqueza es tener tiempo, no cosas.',
+    '¿Estás comprando algo o comprando tiempo perdido?',
+    'Gastar es elegir en qué convertir las horas de tu vida.',
+    'No preguntes si podés pagarlo — preguntá si vale tus horas.',
+    'La libertad financiera empieza por saber cuánto vale tu tiempo.'
+  ],
+  en: [
+    'Money is the life energy you trade for it.',
+    'Is this purchase worth the hours of life it cost you?',
+    'Every dollar spent is time that won\'t come back.',
+    'True wealth is having time, not things.',
+    'Are you buying something, or buying lost time?',
+    'Spending is choosing what to turn your life hours into.',
+    'Don\'t ask if you can afford it — ask if it\'s worth your hours.',
+    'Financial freedom starts with knowing what your time is worth.'
+  ],
+  pt: [
+    'Dinheiro é a energia da sua vida que você troca por ele.',
+    'Esse gasto vale as horas de vida que custou?',
+    'Cada peso gasto é tempo que não vai voltar.',
+    'A verdadeira riqueza é ter tempo, não coisas.',
+    'Você está comprando algo ou comprando tempo perdido?',
+    'Gastar é escolher em que transformar as horas da sua vida.',
+    'Não pergunte se pode pagar — pergunte se vale suas horas.',
+    'A liberdade financeira começa sabendo quanto vale seu tempo.'
+  ]
+};
+
+function hvGetMesActual() {
+  const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const now = new Date();
+  const mesActual = monthNames[now.getMonth()] + ' ' + now.getFullYear();
+  return MONTHS.includes(mesActual) ? mesActual : MONTHS[MONTHS.length - 1];
+}
+
+function hvLoadConfig() {
+  const defaults = { sueldo: 0, sueldoEditadoManual: false, horasTrabajo: 40, horasExtra: 10, gastosTrabajo: 0 };
+  try {
+    const raw = localStorage.getItem(HV_CONFIG_KEY);
+    if (raw) return Object.assign(defaults, JSON.parse(raw));
+  } catch(e) {}
+  return defaults;
+}
+
+function hvSaveConfig(cfg) {
+  safeSet(HV_CONFIG_KEY, JSON.stringify(cfg));
+}
+
+function hvTarifaReal(cfg) {
+  const horasTotales = (Number(cfg.horasTrabajo) || 0) + (Number(cfg.horasExtra) || 0);
+  if (horasTotales <= 0) return null;
+  return ((Number(cfg.sueldo) || 0) - (Number(cfg.gastosTrabajo) || 0)) / (horasTotales * 4.33);
+}
+
+function renderHorasVida() {
+  const cfg = hvLoadConfig();
+  const mesActual = hvGetMesActual();
+  const sueldoMes = DATA.sueldos[mesActual] ? DATA.sueldos[mesActual].sueldo : null;
+
+  if (!cfg.sueldoEditadoManual && sueldoMes) {
+    cfg.sueldo = sueldoMes;
+    hvSaveConfig(cfg);
+  }
+
+  const sinSueldo = document.getElementById('hv-sin-sueldo');
+  const contenido = document.getElementById('hv-contenido');
+
+  if (!cfg.sueldo || cfg.sueldo <= 0) {
+    sinSueldo.style.display = 'block';
+    contenido.style.display = 'none';
+    return;
+  }
+  sinSueldo.style.display = 'none';
+  contenido.style.display = 'block';
+
+  document.getElementById('hv-sueldo').value = cfg.sueldo;
+  document.getElementById('hv-horas-trabajo').value = cfg.horasTrabajo;
+  document.getElementById('hv-horas-extra').value = cfg.horasExtra;
+  document.getElementById('hv-gastos-trabajo').value = cfg.gastosTrabajo;
+  document.getElementById('hv-sueldo-auto-hint').style.display = cfg.sueldoEditadoManual ? 'none' : 'block';
+  document.getElementById('hv-sueldo-manual-hint').style.display = cfg.sueldoEditadoManual ? 'block' : 'none';
+
+  // El grupo colapsable arranca "open" en el HTML, pero su altura real
+  // se fija por JS (ver toggleGroup) — sin esto quedaría visualmente
+  // abierto pero con el contenido oculto en la primera visita a la página.
+  const grupoConfig = document.getElementById('group-hv-config');
+  const grupoContent = grupoConfig?.querySelector('.group-content');
+  if (grupoContent) grupoContent.style.maxHeight = grupoConfig.classList.contains('open') ? 'none' : '0px';
+
+  hvActualizarTarifa(cfg);
+
+  document.getElementById('hv-monto-gasto').value = '';
+  document.getElementById('hv-resultado').style.display = 'none';
+}
+
+function hvActualizarTarifa(cfg) {
+  const tarifa = hvTarifaReal(cfg);
+  const elTarifa = document.getElementById('hv-tarifa-real');
+  const elWarn = document.getElementById('hv-tarifa-warning');
+  if (tarifa == null || tarifa <= 0) {
+    elTarifa.textContent = '—';
+    elWarn.style.display = 'block';
+  } else {
+    elTarifa.textContent = fmt(tarifa) + t('hv_por_hora_suffix');
+    elWarn.style.display = 'none';
+  }
+  calcularGastoHoras();
+}
+
+function onHvSueldoInput() {
+  const cfg = hvLoadConfig();
+  cfg.sueldo = Number(document.getElementById('hv-sueldo').value) || 0;
+  cfg.sueldoEditadoManual = true;
+  hvSaveConfig(cfg);
+  document.getElementById('hv-sueldo-auto-hint').style.display = 'none';
+  document.getElementById('hv-sueldo-manual-hint').style.display = 'block';
+  hvActualizarTarifa(cfg);
+}
+
+function hvResetSueldoAuto() {
+  const cfg = hvLoadConfig();
+  cfg.sueldoEditadoManual = false;
+  hvSaveConfig(cfg);
+  renderHorasVida();
+  toast(t('hv_toast_sueldo_reset'));
+}
+
+function guardarConfigHorasVida() {
+  const cfg = hvLoadConfig();
+  cfg.horasTrabajo = Number(document.getElementById('hv-horas-trabajo').value) || 0;
+  cfg.horasExtra = Number(document.getElementById('hv-horas-extra').value) || 0;
+  cfg.gastosTrabajo = Number(document.getElementById('hv-gastos-trabajo').value) || 0;
+  hvSaveConfig(cfg);
+  hvActualizarTarifa(cfg);
+}
+
+function calcularGastoHoras() {
+  const montoStr = document.getElementById('hv-monto-gasto').value;
+  const resultado = document.getElementById('hv-resultado');
+  const monto = Number(montoStr);
+
+  if (montoStr === '' || !monto || monto <= 0) { resultado.style.display = 'none'; return; }
+
+  const cfg = hvLoadConfig();
+  const tarifa = hvTarifaReal(cfg);
+  if (!tarifa || tarifa <= 0) { resultado.style.display = 'none'; return; }
+
+  const horas = monto / tarifa;
+  document.getElementById('hv-resultado-horas').textContent = t('hv_resultado_horas').replace('{h}', horas.toFixed(1));
+
+  const elDias = document.getElementById('hv-resultado-dias');
+  if (horas > 8) {
+    elDias.textContent = t('hv_resultado_dias').replace('{d}', (horas / 8).toFixed(1));
+    elDias.style.display = 'block';
+  } else {
+    elDias.style.display = 'none';
+  }
+
+  const frases = HV_FRASES[currentLang] || HV_FRASES.es;
+  document.getElementById('hv-frase').textContent = frases[Math.floor(Math.random() * frases.length)];
+
+  resultado.style.display = 'block';
+}
+
+function abrirHistorialHoras() {
+  const cfg = hvLoadConfig();
+  const tarifa = hvTarifaReal(cfg);
+  const lista = document.getElementById('hv-historial-lista');
+  const gastos = [...DATA.gastos]
+    .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '') || b.id - a.id)
+    .slice(0, 10);
+
+  if (!gastos.length) {
+    lista.innerHTML = `<div style="text-align:center;color:var(--text2);font-size:13px;padding:20px 0">${esc(t('hv_historial_vacio'))}</div>`;
+  } else {
+    lista.innerHTML = gastos.map(g => {
+      const horasTxt = (tarifa && tarifa > 0) ? (g.monto / tarifa).toFixed(1) + 'h' : '—';
+      return `<button onclick="hvSeleccionarGasto(${g.monto})" style="display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:none;border-bottom:0.5px solid var(--border);padding:12px 0;text-align:left;cursor:pointer;color:var(--text);font-family:'DM Sans',sans-serif">
+        <span style="font-size:13px">${esc(g.desc) || getCatLabel(g.cat)}</span>
+        <span style="text-align:right"><span style="font-size:13px;font-weight:600;display:block">${fmt(g.monto)}</span><span style="font-size:11px;color:var(--teal)">${horasTxt}</span></span>
+      </button>`;
+    }).join('');
+  }
+
+  document.getElementById('hv-historial-modal').style.display = 'flex';
+}
+
+function cerrarHistorialHoras() {
+  document.getElementById('hv-historial-modal').style.display = 'none';
+}
+
+function hvSeleccionarGasto(monto) {
+  cerrarHistorialHoras();
+  document.getElementById('hv-monto-gasto').value = monto;
+  calcularGastoHoras();
 }
 
 /* ── METAS ──────────────────────────────────────────────────────────────── */
@@ -6057,6 +6415,17 @@ window.addEventListener('offline', () => {
     <button class="btn btn-primary" onclick="guardarGastoRapido()" style="width:100%;margin-top:4px">
       <span data-i18n="btn_guardar_gasto">Guardar gasto</span>
     </button>
+  </div>
+</div>
+
+<!-- ── MODAL HISTORIAL (HORAS DE VIDA) ─────────────────────────────────── -->
+<div id="hv-historial-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:flex-end;justify-content:center" onclick="if(event.target===this)cerrarHistorialHoras()">
+  <div style="background:var(--bg2);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:16px;font-weight:600;color:var(--text)" data-i18n="hv_historial_titulo">Últimos gastos</div>
+      <button onclick="cerrarHistorialHoras()" style="background:none;border:none;color:var(--text2);font-size:24px;cursor:pointer;line-height:1;padding:0 4px" aria-label="Cerrar">×</button>
+    </div>
+    <div id="hv-historial-lista"></div>
   </div>
 </div>
 
