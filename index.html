@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v8.8';
+const MARTIFIN_VERSION = 'v8.9';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -2353,6 +2353,19 @@ tr:last-child td { border: none; }
           <div class="field"><label data-i18n="lbl_monto">Monto ($)</label><input type="number" id="s-inversion" placeholder="0" inputmode="decimal" style="border-color:rgba(127,119,221,0.3)"></div>
           <div class="field"><label data-i18n="lbl_tipo">Tipo</label><select id="s-inv-tipo" style="border-color:rgba(127,119,221,0.3);background:var(--bg3);border-radius:var(--r-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;padding:12px 14px;width:100%;appearance:none;-webkit-appearance:none;outline:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 14px center;padding-right:36px"></select></div>
         </div>
+        <div class="field" style="max-width:130px">
+          <label data-i18n="lbl_moneda">Moneda</label>
+          <select id="inv-moneda" onchange="onMonedaChange('inv')" style="border-color:rgba(127,119,221,0.3)">
+            <option value="UYU">UYU</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+        <div id="inv-cambio-info" style="display:none;align-items:center;gap:8px;margin:-6px 0 12px;font-size:12px;color:var(--text2)">
+          <span id="inv-cambio-loader" style="display:none">⏳ <span data-i18n="txt_consultando_cambio">Consultando cambio BCU...</span></span>
+          <span data-i18n="lbl_cambio_bcu">Cambio BCU hoy:</span>
+          <input type="number" id="inv-cambio" inputmode="decimal" style="display:none;width:80px;background:var(--bg3);border:0.5px solid rgba(127,119,221,0.3);border-radius:var(--r-sm);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:4px 6px">
+          <span style="opacity:.6" data-i18n="txt_cambio_editable">(editable)</span>
+        </div>
         <button class="btn" style="background:rgba(127,119,221,0.12);color:#1DBA87;border:0.5px solid #1DBA87;font-size:15px;font-weight:600;padding:14px;margin-bottom:14px" onclick="guardarInversion()"><span data-i18n="btn_guardar_inv">Guardar inversión</span></button>
         <div id="inv-quick" style="font-size:13px;color:var(--text2);text-align:center;padding:6px 0"></div>
       </div>
@@ -2368,6 +2381,19 @@ tr:last-child td { border: none; }
         <div class="field"><label data-i18n="lbl_mes">Mes</label><select id="ri-mes"></select></div>
         <div class="field"><label data-i18n="lbl_motivo">Motivo</label>
           <select id="ri-motivo"></select>
+        </div>
+        <div class="field" style="max-width:130px">
+          <label data-i18n="lbl_moneda">Moneda</label>
+          <select id="ri-moneda" onchange="onMonedaChange('ri')">
+            <option value="UYU">UYU</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+        <div id="ri-cambio-info" style="display:none;align-items:center;gap:8px;margin:-6px 0 12px;font-size:12px;color:var(--text2)">
+          <span id="ri-cambio-loader" style="display:none">⏳ <span data-i18n="txt_consultando_cambio">Consultando cambio BCU...</span></span>
+          <span data-i18n="lbl_cambio_bcu">Cambio BCU hoy:</span>
+          <input type="number" id="ri-cambio" inputmode="decimal" style="display:none;width:80px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:4px 6px">
+          <span style="opacity:.6" data-i18n="txt_cambio_editable">(editable)</span>
         </div>
         <button class="btn" style="background:rgba(127,119,221,0.12);color:#1DBA87;border:0.5px solid #1DBA87;font-size:15px;font-weight:600;padding:14px" onclick="guardarRetiroInversion()"><span data-i18n="btn_registrar_retiro">Registrar retiro</span></button>
       </div>
@@ -3102,6 +3128,31 @@ function migrarGastosMonedaV88() {
   if (migrados > 0) console.log('Migración moneda v8.8: ' + migrados + ' gastos migrados a UYU');
 }
 
+/* ── MIGRACIÓN MULTI-MONEDA v8.9 (inversiones) ────────────────────────────
+ * Mismo criterio que gastos (v8.8): aportes y retiros de inversión sin
+ * "moneda" definida se asumen cargados en UYU. Idempotente.
+ * ─────────────────────────────────────────────────────────────────────── */
+function migrarInversionesMonedaV89() {
+  let migrados = 0;
+  (DATA.inversiones || []).forEach(i => {
+    if (i.moneda === undefined) {
+      i.moneda = 'UYU';
+      i.cambio = null;
+      i.monto_uyu = i.monto;
+      migrados++;
+    }
+  });
+  (DATA.retirosInversion || []).forEach(r => {
+    if (r.moneda === undefined) {
+      r.moneda = 'UYU';
+      r.cambio = null;
+      r.monto_uyu = r.monto;
+      migrados++;
+    }
+  });
+  if (migrados > 0) console.log('Migración moneda v8.9: ' + migrados + ' ítems de inversión migrados a UYU');
+}
+
 function save() {
   const payload = JSON.stringify({...DATA, months: MONTHS});
   safeSet('fpro_v3', payload);
@@ -3130,6 +3181,7 @@ function load() {
       invTipos: p.invTipos || null
     };
     migrarGastosMonedaV88();
+    migrarInversionesMonedaV89();
     if(p.months && p.months.length) MONTHS = p.months;
   } catch(e) {}
 }
@@ -3378,7 +3430,7 @@ function renderCatBars() {
 
   // Empty state: sin gastos en este mes
   if (!sorted.length) {
-    const totalInv = (DATA.inversiones||[]).reduce((a,i)=>a+i.monto,0);
+    const totalInv = (DATA.inversiones||[]).reduce((a,i)=>a+i.monto_uyu,0);
     if (totalInv === 0) {
       document.getElementById('cat-bars').innerHTML = `<div style="text-align:center;padding:20px 10px">
         <div style="font-size:32px;margin-bottom:8px;opacity:.5">💸</div>
@@ -3408,10 +3460,10 @@ function renderCatBars() {
     </div>`;
   }).join('');
   // Inversiones siempre al final, destacada
-  const totalInv = (DATA.inversiones||[]).reduce((a,i)=>a+i.monto,0);
-  const totalRetInv = (DATA.retirosInversion||[]).reduce((a,r)=>a+r.monto, 0);
+  const totalInv = (DATA.inversiones||[]).reduce((a,i)=>a+i.monto_uyu,0);
+  const totalRetInv = (DATA.retirosInversion||[]).reduce((a,r)=>a+r.monto_uyu, 0);
   const saldoInv = totalInv - totalRetInv;
-  const invMes = (DATA.inversiones||[]).filter(i=>i.mes===selMes).reduce((a,i)=>a+i.monto,0);
+  const invMes = (DATA.inversiones||[]).filter(i=>i.mes===selMes).reduce((a,i)=>a+i.monto_uyu,0);
   const el = document.getElementById('cat-bars');
   if(el && (totalInv > 0 || invMes > 0)) {
     el.innerHTML += `<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(127,119,221,0.25)">
@@ -3461,10 +3513,10 @@ function renderChart() {
 /* ── INVERSIONES ─────────────────────────────────────────────────────────── */
 function renderInversiones() {
   const allInv = DATA.inversiones || [];
-  const totalInv = allInv.reduce((a,i)=>a+i.monto, 0);
-  const totalRetirado = (DATA.retirosInversion||[]).reduce((a,r)=>a+r.monto, 0);
+  const totalInv = allInv.reduce((a,i)=>a+i.monto_uyu, 0);
+  const totalRetirado = (DATA.retirosInversion||[]).reduce((a,r)=>a+r.monto_uyu, 0);
   const saldo = totalInv - totalRetirado;
-  const invMes = allInv.filter(i=>i.mes===selMes).reduce((a,i)=>a+i.monto, 0);
+  const invMes = allInv.filter(i=>i.mes===selMes).reduce((a,i)=>a+i.monto_uyu, 0);
 
   const setEl = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
   setEl('inv-total', fmt(totalInv));
@@ -3475,7 +3527,7 @@ function renderInversiones() {
 
   // ── Desglose por instrumento con barras — en el Resumen ──
   const tiposMap = {};
-  allInv.forEach(i=>{ tiposMap[i.tipo]=(tiposMap[i.tipo]||0)+i.monto; });
+  allInv.forEach(i=>{ tiposMap[i.tipo]=(tiposMap[i.tipo]||0)+i.monto_uyu; });
   const tiposArr = Object.entries(tiposMap).sort((a,b)=>b[1]-a[1]);
   const maxTipo = tiposArr[0]?.[1]||1;
   const desgloseEl = document.getElementById('inv-desglose-tipos');
@@ -3515,7 +3567,7 @@ function renderInversiones() {
               <div style="font-size:11px;color:var(--text2)">${esc(i.mes)}${i.fecha?' · '+esc(i.fecha):''}</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
-              <div style="font-family:'DM Mono',monospace;font-size:13px;color:#1DBA87;font-weight:500">${fmt(i.monto)}</div>
+              <div style="font-family:'DM Mono',monospace;font-size:13px;color:#1DBA87;font-weight:500">${montoDisplay(i)}</div>
               <button class="btn-edit-sm" onclick="editarInversion(${i.id})" title="${t('btn_editar')}">✎</button>
               <button class="btn-danger-sm" onclick="borrarInversion(${i.id})" title="${t('btn_borrar')}">✕</button>
             </div>
@@ -3536,7 +3588,7 @@ function renderInversiones() {
           <div style="font-size:11px;color:var(--text2)">${esc(r.motivo)} · ${esc(r.mes)}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--red);font-weight:500">${fmt(r.monto)}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--red);font-weight:500">${montoDisplay(r)}</div>
           <button class="btn-danger-sm" onclick="borrarRetiroInversion(${r.id})">✕</button>
         </div>
       </div>`).join('') + '</div>';
@@ -3555,10 +3607,14 @@ function guardarInversion() {
   const monto = parseFloat(document.getElementById('s-inversion')?.value)||0;
   const tipo = document.getElementById('s-inv-tipo')?.value||'Otro';
   if(!mes||!monto){ toast(t('toast_ingresa_inv')); return; }
+  const montoRedondeado = Math.round(monto);
+  const mm = resolverMonedaForm('inv', montoRedondeado);
+  if(!mm.valid) { toast(t('toast_cambio_requerido')); return; }
   if(!DATA.inversiones) DATA.inversiones = [];
-  DATA.inversiones.push({id: Date.now() + Math.floor(Math.random()*1000), mes, monto:Math.round(monto), tipo, fecha:new Date().toISOString().slice(0,10)});
+  DATA.inversiones.push({id: Date.now() + Math.floor(Math.random()*1000), mes, monto:montoRedondeado, tipo, fecha:new Date().toISOString().slice(0,10), moneda:mm.moneda, cambio:mm.cambio, monto_uyu:mm.monto_uyu});
   save();
   document.getElementById('s-inversion').value = '';
+  resetMonedaForm('inv');
   toast(t('toast_inv_ok'));
   renderInvQuick();
   renderInversiones();
@@ -3568,7 +3624,7 @@ function renderInvQuick() {
   const mes = document.getElementById('inv-mes-sel')?.value;
   if(!mes) return;
   const invs = (DATA.inversiones||[]).filter(i=>i.mes===mes);
-  const total = invs.reduce((a,i)=>a+i.monto,0);
+  const total = invs.reduce((a,i)=>a+i.monto_uyu,0);
   const el = document.getElementById('inv-quick');
   if(!el) return;
   if(!invs.length){ el.innerHTML=''; return; }
@@ -3583,15 +3639,19 @@ function guardarRetiroInversion() {
   const mes = document.getElementById('ri-mes').value;
   const motivo = document.getElementById('ri-motivo').value;
   if(!desc||!monto||!fecha||!mes){ toast(t('toast_campos')); return; }
-  const totalInv = (DATA.inversiones||[]).reduce((a,i)=>a+i.monto, 0);
-  const totalRetirado = (DATA.retirosInversion||[]).reduce((a,r)=>a+r.monto, 0);
+  const montoRedondeado = Math.round(monto);
+  const mm = resolverMonedaForm('ri', montoRedondeado);
+  if(!mm.valid) { toast(t('toast_cambio_requerido')); return; }
+  const totalInv = (DATA.inversiones||[]).reduce((a,i)=>a+i.monto_uyu, 0);
+  const totalRetirado = (DATA.retirosInversion||[]).reduce((a,r)=>a+r.monto_uyu, 0);
   const saldo = totalInv - totalRetirado;
-  if(Math.round(monto) > saldo){ toast(t('toast_saldo_ins')+fmt(saldo)); return; }
+  if(mm.monto_uyu > saldo){ toast(t('toast_saldo_ins')+fmt(saldo)); return; }
   if(!DATA.retirosInversion) DATA.retirosInversion = [];
-  DATA.retirosInversion.push({id: Date.now() + Math.floor(Math.random()*1000), desc, monto:Math.round(monto), fecha, mes, motivo});
+  DATA.retirosInversion.push({id: Date.now() + Math.floor(Math.random()*1000), desc, monto:montoRedondeado, fecha, mes, motivo, moneda:mm.moneda, cambio:mm.cambio, monto_uyu:mm.monto_uyu});
   save();
   document.getElementById('ri-desc').value = '';
   document.getElementById('ri-monto').value = '';
+  resetMonedaForm('ri');
   toast(t('toast_retiro_ok'));
   renderInversiones();
 }
@@ -3606,8 +3666,8 @@ function borrarInversion(id) {
   if(!inv) return;
   if(!confirm(t('conf_borrar_inv'))) return;
   // Validar que no quede saldo negativo después de borrar
-  const totalInvSinEsta = (DATA.inversiones||[]).filter(i=>i.id!==id).reduce((a,i)=>a+i.monto,0);
-  const totalRetirado = (DATA.retirosInversion||[]).reduce((a,r)=>a+r.monto,0);
+  const totalInvSinEsta = (DATA.inversiones||[]).filter(i=>i.id!==id).reduce((a,i)=>a+i.monto_uyu,0);
+  const totalRetirado = (DATA.retirosInversion||[]).reduce((a,r)=>a+r.monto_uyu,0);
   if(totalInvSinEsta < totalRetirado) {
     toast(t('toast_inv_no_borrar'));
     return;
@@ -3635,6 +3695,24 @@ function editarInversion(id) {
   }
   // Llenar el monto
   document.getElementById('inve-monto').value = inv.monto;
+
+  // Precargar moneda/cambio sin refetchear — respeta el cambio histórico
+  // guardado. inve-fecha (oculto) usa la fecha real del aporte, para que si
+  // se cambia de UYU a USD se resuelva contra esa fecha y no contra "hoy".
+  document.getElementById('inve-fecha').value = inv.fecha || '';
+  const inveMoneda = document.getElementById('inve-moneda');
+  const inveCambioInfo = document.getElementById('inve-cambio-info');
+  const inveCambioInput = document.getElementById('inve-cambio');
+  const inveCambioLoader = document.getElementById('inve-cambio-loader');
+  if (inveMoneda) inveMoneda.value = inv.moneda || 'UYU';
+  if (inv.moneda === 'USD') {
+    if (inveCambioLoader) inveCambioLoader.style.display = 'none';
+    if (inveCambioInfo) inveCambioInfo.style.display = 'flex';
+    if (inveCambioInput) { inveCambioInput.value = inv.cambio || ''; inveCambioInput.style.display = 'inline-block'; }
+  } else if (inveCambioInfo) {
+    inveCambioInfo.style.display = 'none';
+  }
+
   // Mostrar modal
   document.getElementById('inv-edit-modal').style.display = 'flex';
 }
@@ -3652,16 +3730,22 @@ function guardarInvEdit() {
   const nuevoTipo = document.getElementById('inve-tipo').value;
   const nuevoMes = document.getElementById('inve-mes').value;
   if(!nuevoMonto || nuevoMonto <= 0) { toast(t('toast_monto_invalido')); return; }
-  // Validar saldo (no puede dejar saldo negativo)
-  const totalInvSinEsta = (DATA.inversiones||[]).filter(i=>i.id!==_invEditId).reduce((a,i)=>a+i.monto,0);
-  const totalRetirado = (DATA.retirosInversion||[]).reduce((a,r)=>a+r.monto,0);
-  if((totalInvSinEsta + Math.round(nuevoMonto)) < totalRetirado) {
+  const montoRedondeado = Math.round(nuevoMonto);
+  const mm = resolverMonedaForm('inve', montoRedondeado);
+  if(!mm.valid) { toast(t('toast_cambio_requerido')); return; }
+  // Validar saldo (no puede dejar saldo negativo) — en monto_uyu
+  const totalInvSinEsta = (DATA.inversiones||[]).filter(i=>i.id!==_invEditId).reduce((a,i)=>a+i.monto_uyu,0);
+  const totalRetirado = (DATA.retirosInversion||[]).reduce((a,r)=>a+r.monto_uyu,0);
+  if((totalInvSinEsta + mm.monto_uyu) < totalRetirado) {
     toast(t('toast_inv_no_editar'));
     return;
   }
-  inv.monto = Math.round(nuevoMonto);
+  inv.monto = montoRedondeado;
   inv.tipo = nuevoTipo;
   inv.mes = nuevoMes;
+  inv.moneda = mm.moneda;
+  inv.cambio = mm.cambio;
+  inv.monto_uyu = mm.monto_uyu;
   save();
   renderInversiones();
   renderInvQuick();
@@ -5152,6 +5236,7 @@ function applyCloudData(p) {
     gastosAhorros: p.gastosAhorros||[], retirosInversion: p.retirosInversion||[], inversiones: p.inversiones||[], invTipos: p.invTipos||null
   };
   migrarGastosMonedaV88();
+  migrarInversionesMonedaV89();
   // Override HIST with cloud data for months that have been manually edited
   if(p.sueldos) {
     Object.entries(p.sueldos).forEach(([mes, val]) => {
@@ -5656,7 +5741,9 @@ function _buildExcelSheets() {
       [H.Tipo]: i.tipo || '',
       [H.Descripcion]: '',
       [H.Motivo]: '',
-      [H.Monto]: i.monto || 0
+      [H.Monto]: i.monto_uyu || 0,
+      [H.Moneda]: i.moneda || 'UYU',
+      [H.MontoOriginal]: i.monto || 0
     });
   });
   (DATA.retirosInversion || []).forEach(r => {
@@ -5668,7 +5755,9 @@ function _buildExcelSheets() {
       [H.Tipo]: '',
       [H.Descripcion]: r.desc || '',
       [H.Motivo]: r.motivo || '',
-      [H.Monto]: r.monto || 0
+      [H.Monto]: r.monto_uyu || 0,
+      [H.Moneda]: r.moneda || 'UYU',
+      [H.MontoOriginal]: r.monto || 0
     });
   });
 
@@ -6477,6 +6566,20 @@ window.addEventListener('offline', () => {
       <div class="field"><label data-i18n="lbl_tipo">Tipo</label><select id="inve-tipo"></select></div>
     </div>
     <div class="field"><label data-i18n="lbl_mes">Mes</label><select id="inve-mes"></select></div>
+    <input type="hidden" id="inve-fecha">
+    <div class="field" style="max-width:130px">
+      <label data-i18n="lbl_moneda">Moneda</label>
+      <select id="inve-moneda" onchange="onMonedaChange('inve')">
+        <option value="UYU">UYU</option>
+        <option value="USD">USD</option>
+      </select>
+    </div>
+    <div id="inve-cambio-info" style="display:none;align-items:center;gap:8px;margin:-6px 0 12px;font-size:12px;color:var(--text2)">
+      <span id="inve-cambio-loader" style="display:none">⏳ <span data-i18n="txt_consultando_cambio">Consultando cambio BCU...</span></span>
+      <span data-i18n="lbl_cambio_bcu">Cambio BCU hoy:</span>
+      <input type="number" id="inve-cambio" inputmode="decimal" style="display:none;width:80px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:4px 6px">
+      <span style="opacity:.6" data-i18n="txt_cambio_editable">(editable)</span>
+    </div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn" onclick="cerrarInvEdit()" style="flex:1"><span data-i18n="lbl_cancelar">Cancelar</span></button>
       <button class="btn btn-primary" onclick="guardarInvEdit()" style="flex:1;background:#1DBA87;color:#fff"><span data-i18n="lbl_guardar">Guardar</span></button>
