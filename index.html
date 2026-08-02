@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v8.9';
+const MARTIFIN_VERSION = 'v9.0';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -208,6 +208,7 @@ const LANG = {
     nav_ajustes: 'Ajustes',
     drawer_finance: 'Finanzas',
     drawer_preferences: 'Preferencias',
+    drawer_kofi: 'Apoyar en Ko-fi ☕',
     group_movimientos_frecuentes: 'Movimientos frecuentes',
     group_este_mes: 'Este mes',
     group_inversiones: 'Inversiones',
@@ -681,6 +682,7 @@ const LANG = {
     nav_ajustes: 'Settings',
     drawer_finance: 'Finance',
     drawer_preferences: 'Preferences',
+    drawer_kofi: 'Support on Ko-fi ☕',
     group_movimientos_frecuentes: 'Frequent movements',
     group_este_mes: 'This month',
     group_inversiones: 'Investments',
@@ -1107,6 +1109,7 @@ const LANG = {
     nav_ajustes: 'Ajustes',
     drawer_finance: 'Finanças',
     drawer_preferences: 'Preferências',
+    drawer_kofi: 'Apoiar no Ko-fi ☕',
     group_movimientos_frecuentes: 'Movimentos frequentes',
     group_este_mes: 'Este mês',
     group_inversiones: 'Investimentos',
@@ -1571,16 +1574,25 @@ html, body { height: 100%; position: relative; background: var(--bg); font-size:
 .pro-tooltip.show { opacity: 1; }
 
 /* DRAWER */
-#drawer-toggle { background: transparent; border: 0.5px solid var(--border2); border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-#drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 450; opacity: 0; visibility: hidden; transition: opacity .2s ease; }
+#drawer-toggle { background: rgba(29,186,135,0.14); border: 0.5px solid var(--border2); border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 17px; color: var(--teal); flex-shrink: 0; }
+#drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 450; opacity: 0; visibility: hidden; transition: opacity .2s ease; }
 #drawer-overlay.open { opacity: 1; visibility: visible; }
-#drawer-panel { position: fixed; top: 0; left: 0; bottom: 0; width: 80%; max-width: 320px; z-index: 500; background: var(--bg2); border-right: 0.5px solid var(--border2); transform: translateX(-100%); transition: transform .2s ease; padding-top: 52px; padding-bottom: var(--safe-bottom); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+#drawer-panel { position: fixed; top: 0; left: 0; bottom: 0; width: 80%; max-width: 320px; z-index: 500; background: var(--bg2); border-right: 0.5px solid var(--border2); transform: translateX(-100%); transition: transform .2s ease; padding-top: 52px; display: flex; flex-direction: column; overflow: hidden; }
 #drawer-panel.open { transform: translateX(0); }
-.drawer-header { display: flex; justify-content: flex-end; padding: 0 16px 16px; }
+.drawer-header { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 16px 16px; flex-shrink: 0; }
+.drawer-header-title { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
+.drawer-header-version { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.drawer-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .drawer-section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); padding: 16px 20px 8px; }
-.drawer-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 20px; background: none; border: none; color: var(--text); font-size: 15px; font-family: 'DM Sans', sans-serif; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.drawer-btn:active { background: var(--bg3); }
-.drawer-divider { height: 0.5px; background: var(--border2); margin: 8px 20px; }
+.drawer-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 20px; background: none; border: none; color: var(--text); font-size: 15px; font-family: 'DM Sans', sans-serif; text-align: left; cursor: pointer; transition: background .15s ease; -webkit-tap-highlight-color: transparent; }
+.drawer-btn:hover, .drawer-btn:active { background: rgba(20,184,166,0.08); }
+.drawer-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.drawer-divider { height: 0.5px; background: var(--border2); opacity: 0.15; margin: 8px 20px; }
+.drawer-footer { flex-shrink: 0; padding: 14px 20px calc(14px + var(--safe-bottom)); border-top: 0.5px solid var(--border2); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.drawer-footer-version { font-size: 11px; color: var(--text3); }
+.drawer-footer-kofi { font-size: 13px; font-weight: 500; color: var(--teal); text-decoration: none; }
+.drawer-footer-kofi:active { opacity: 0.7; }
+.theme-switch-row { position: absolute; top: 10px; right: 14px; display: flex; align-items: center; gap: 5px; font-size: 12px; }
 
 /* CARGAR — GRUPOS COLAPSABLES */
 .collapsible-group { margin-bottom: 12px; }
@@ -2166,30 +2178,6 @@ tr:last-child td { border: none; }
 
         <div id="ac-gastos-list"></div>
       </div>
-      <div class="card" style="border-color:rgba(127,119,221,0.3)">
-        <div class="card-title" style="color:#1DBA87"><span data-i18n="card_cartera">Cartera de inversiones</span></div>
-        <div class="kpi-grid" style="margin-bottom:14px">
-          <div class="kpi">
-            <div class="kpi-label"><span data-i18n="lbl_total_invertido">Total invertido</span></div>
-            <div class="kpi-value" style="font-size:16px;color:#1DBA87" id="inv-total">—</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label"><span data-i18n="lbl_retirado">Retirado</span></div>
-            <div class="kpi-value" style="font-size:16px;color:var(--red)" id="inv-retirado">—</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label"><span data-i18n="lbl_este_mes">Este mes</span></div>
-            <div class="kpi-value" style="font-size:16px;color:#1DBA87" id="inv-mes">—</div>
-          </div>
-          <div class="kpi" style="border:1px solid #1DBA87">
-            <div class="kpi-label"><span data-i18n="lbl_cartera_actual">Cartera actual</span></div>
-            <div class="kpi-value" style="font-size:16px;color:#1DBA87" id="inv-saldo">—</div>
-          </div>
-        </div>
-        <div id="inv-desglose-tipos" style="margin-bottom:10px"></div>
-        <div id="inv-aportes-list"></div>
-        <div id="inv-retiros-list"></div>
-      </div>
 
       <div id="inspiracion-card" onclick="abrirFilosofia()" style="background:rgba(240,165,0,0.06);border:0.5px solid rgba(240,165,0,0.3);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer">
         <div style="width:34px;height:34px;background:rgba(240,165,0,0.12);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📖</div>
@@ -2454,6 +2442,34 @@ tr:last-child td { border: none; }
         <div id="metas-resumen"></div>
       </div>
     </div>
+
+  <!-- INVERSIONES -->
+  <div id="pg-inversiones" class="page">
+      <div class="card" style="border-color:rgba(127,119,221,0.3)">
+        <div class="card-title" style="color:#1DBA87"><span data-i18n="card_cartera">Cartera de inversiones</span></div>
+        <div class="kpi-grid" style="margin-bottom:14px">
+          <div class="kpi">
+            <div class="kpi-label"><span data-i18n="lbl_total_invertido">Total invertido</span></div>
+            <div class="kpi-value" style="font-size:16px;color:#1DBA87" id="inv-total">—</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label"><span data-i18n="lbl_retirado">Retirado</span></div>
+            <div class="kpi-value" style="font-size:16px;color:var(--red)" id="inv-retirado">—</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label"><span data-i18n="lbl_este_mes">Este mes</span></div>
+            <div class="kpi-value" style="font-size:16px;color:#1DBA87" id="inv-mes">—</div>
+          </div>
+          <div class="kpi" style="border:1px solid #1DBA87">
+            <div class="kpi-label"><span data-i18n="lbl_cartera_actual">Cartera actual</span></div>
+            <div class="kpi-value" style="font-size:16px;color:#1DBA87" id="inv-saldo">—</div>
+          </div>
+        </div>
+        <div id="inv-desglose-tipos" style="margin-bottom:10px"></div>
+        <div id="inv-aportes-list"></div>
+        <div id="inv-retiros-list"></div>
+      </div>
+  </div>
 
   <!-- TENDENCIAS -->
   <div id="pg-tendencias" class="page">
@@ -2887,19 +2903,33 @@ tr:last-child td { border: none; }
 <div id="drawer-overlay" onclick="closeDrawer()"></div>
 <div id="drawer-panel">
   <div class="drawer-header">
-    <button id="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">🌙</button>
+    <div class="theme-switch-row">
+      <span>🌙</span>
+      <label class="ios-switch" aria-label="Cambiar tema" title="Cambiar tema">
+        <input type="checkbox" id="theme-toggle-input" onchange="toggleTheme()">
+        <span class="slider"></span>
+      </label>
+      <span>☀️</span>
+    </div>
+    <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
+    <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
+    <div class="drawer-header-version">v9.0</div>
   </div>
 
+  <div class="drawer-body">
   <div class="drawer-section">
     <div class="drawer-section-label" data-i18n="drawer_finance">Finanzas</div>
     <button class="drawer-btn" onclick="closeDrawer(); navTo('metas', null)">
-      <span class="nav-icon">◎</span><span data-i18n="nav_metas">Metas</span>
+      <span class="drawer-icon" style="background:var(--teal-dim);color:var(--teal)">◎</span><span data-i18n="nav_metas">Metas</span>
     </button>
     <button class="drawer-btn" onclick="closeDrawer(); navTo('categorias', null)">
-      <span class="nav-icon">⊛</span><span data-i18n="nav_categorias">Categorías</span>
+      <span class="drawer-icon" style="background:rgba(127,119,221,0.14);color:#7f77dd">⊛</span><span data-i18n="nav_categorias">Categorías</span>
+    </button>
+    <button class="drawer-btn" onclick="closeDrawer(); navTo('inversiones', null)">
+      <span class="drawer-icon" style="background:var(--blue-dim);color:var(--blue)">📈</span><span data-i18n="group_inversiones">Inversiones</span>
     </button>
     <button class="drawer-btn" onclick="closeDrawer(); navTo('horas-vida', null)">
-      <span class="nav-icon">⏳</span><span data-i18n="nav_horas_vida">Horas de Vida</span>
+      <span class="drawer-icon" style="background:var(--amber-dim);color:var(--amber)">⏳</span><span data-i18n="nav_horas_vida">Horas de Vida</span>
     </button>
   </div>
 
@@ -2908,8 +2938,14 @@ tr:last-child td { border: none; }
   <div class="drawer-section">
     <div class="drawer-section-label" data-i18n="drawer_preferences">Preferencias</div>
     <button class="drawer-btn" onclick="closeDrawer(); navTo('ajustes', null)">
-      <span class="nav-icon">⚙</span><span data-i18n="nav_ajustes">Ajustes</span>
+      <span class="drawer-icon" style="background:rgba(138,147,168,0.14);color:var(--text2)">⚙</span><span data-i18n="nav_ajustes">Ajustes</span>
     </button>
+  </div>
+  </div>
+
+  <div class="drawer-footer">
+    <div class="drawer-footer-version">Martifin v9.0</div>
+    <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
 
@@ -3285,7 +3321,7 @@ async function navTo(pg, btn, direction) {
     else fab.classList.remove('hidden');
   }
 
-  if(pg==='dashboard') { buildMonthScroll(); renderKPIs(); renderCatBars(); renderChart(); renderAcumulado(); renderInversiones(); initParejaUI(); if(typeof vistaActual!=='undefined'&&vistaActual==='pareja') renderHogar(); }
+  if(pg==='dashboard') { buildMonthScroll(); renderKPIs(); renderCatBars(); renderChart(); renderAcumulado(); initParejaUI(); if(typeof vistaActual!=='undefined'&&vistaActual==='pareja') renderHogar(); }
   if(pg==='historial') renderHistorial();
   if(pg==='metas') renderMetas();
   if(pg==='ajustes') { setTimeout(renderAjustes, 50); }
@@ -3293,6 +3329,7 @@ async function navTo(pg, btn, direction) {
   if(pg==='categorias') { initCatMesSel(); renderCatAnalisis(); }
   if(pg==='cargar') resetGruposCargar();
   if(pg==='horas-vida') renderHorasVida();
+  if(pg==='inversiones') renderInversiones();
 }
 
 /* ── MONTH SCROLL ───────────────────────────────────────────────────────── */
@@ -5553,8 +5590,8 @@ function initTheme() {
 }
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  const btn = document.getElementById('theme-toggle');
-  if(btn) btn.textContent = theme === 'dark' ? '🌙' : '☀️';
+  const input = document.getElementById('theme-toggle-input');
+  if(input) input.checked = (theme === 'light');
   safeSet('martifin_theme', theme);
 }
 function toggleTheme() {
