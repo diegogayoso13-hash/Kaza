@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.0';
+const MARTIFIN_VERSION = 'v9.1';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -2471,6 +2471,25 @@ tr:last-child td { border: none; }
       </div>
   </div>
 
+  <!-- PAREJA -->
+  <div id="pg-pareja" class="page">
+      <div class="card">
+        <div class="card-title" style="color:#1DBA87"><span data-i18n="card_pareja">Modo pareja</span></div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5" data-i18n="lbl_pareja_desc">Activá el modo hogar para ver los gastos divididos entre vos y tu pareja.</div>
+        <div id="pareja-config-off">
+          <div class="row2" style="margin-bottom:10px">
+            <div class="field"><label data-i18n="lbl_tu_nombre">Tu nombre</label><input type="text" id="aj-mi-nombre" placeholder="Ej: Juan" value="Yo"></div>
+            <div class="field"><label data-i18n="lbl_nombre_pareja">Nombre pareja</label><input type="text" id="aj-su-nombre" placeholder="Ej: María"></div>
+          </div>
+          <button class="btn" onclick="activarParejaDesdeAjustes()" style="background:#0a2a1f;color:#1DBA87;border:0.5px solid #1DBA87;font-size:14px;padding:12px"><span data-i18n="btn_activar_pareja">Activar modo pareja</span></button>
+        </div>
+        <div id="pareja-config-on" style="display:none">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:10px" id="pareja-config-label"></div>
+          <button class="btn" onclick="desactivarPareja()" style="font-size:13px;padding:10px"><span data-i18n="btn_desactivar_pareja">Desactivar modo pareja</span></button>
+        </div>
+      </div>
+  </div>
+
   <!-- TENDENCIAS -->
   <div id="pg-tendencias" class="page">
 
@@ -2773,22 +2792,6 @@ tr:last-child td { border: none; }
       </div>
 
       <div class="card">
-        <div class="card-title" style="color:#1DBA87"><span data-i18n="card_pareja">Modo pareja</span></div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5" data-i18n="lbl_pareja_desc">Activá el modo hogar para ver los gastos divididos entre vos y tu pareja.</div>
-        <div id="pareja-config-off">
-          <div class="row2" style="margin-bottom:10px">
-            <div class="field"><label data-i18n="lbl_tu_nombre">Tu nombre</label><input type="text" id="aj-mi-nombre" placeholder="Ej: Juan" value="Yo"></div>
-            <div class="field"><label data-i18n="lbl_nombre_pareja">Nombre pareja</label><input type="text" id="aj-su-nombre" placeholder="Ej: María"></div>
-          </div>
-          <button class="btn" onclick="activarParejaDesdeAjustes()" style="background:#0a2a1f;color:#1DBA87;border:0.5px solid #1DBA87;font-size:14px;padding:12px"><span data-i18n="btn_activar_pareja">Activar modo pareja</span></button>
-        </div>
-        <div id="pareja-config-on" style="display:none">
-          <div style="font-size:13px;color:var(--text2);margin-bottom:10px" id="pareja-config-label"></div>
-          <button class="btn" onclick="desactivarPareja()" style="font-size:13px;padding:10px"><span data-i18n="btn_desactivar_pareja">Desactivar modo pareja</span></button>
-        </div>
-      </div>
-
-      <div class="card">
         <div class="card-title"><span data-i18n="card_meses">Meses activos</span></div>
         <div id="meses-list"></div>
         <button class="btn" onclick="toggleAgregarMes()" id="btn-agregar-mes" style="width:100%;margin-top:10px;font-size:13px;padding:10px;border-style:dashed;color:var(--text2)"><span data-i18n="btn_agregar_mes">+ Agregar mes</span></button>
@@ -2913,7 +2916,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.0</div>
+    <div class="drawer-header-version">v9.1</div>
   </div>
 
   <div class="drawer-body">
@@ -2937,6 +2940,9 @@ tr:last-child td { border: none; }
 
   <div class="drawer-section">
     <div class="drawer-section-label" data-i18n="drawer_preferences">Preferencias</div>
+    <button class="drawer-btn" onclick="closeDrawer(); navTo('pareja', null)">
+      <span class="drawer-icon" style="background:rgba(224,85,156,0.14);color:#e0559c">♥</span><span data-i18n="card_pareja">Modo pareja</span>
+    </button>
     <button class="drawer-btn" onclick="closeDrawer(); navTo('ajustes', null)">
       <span class="drawer-icon" style="background:rgba(138,147,168,0.14);color:var(--text2)">⚙</span><span data-i18n="nav_ajustes">Ajustes</span>
     </button>
@@ -3330,6 +3336,7 @@ async function navTo(pg, btn, direction) {
   if(pg==='cargar') resetGruposCargar();
   if(pg==='horas-vida') renderHorasVida();
   if(pg==='inversiones') renderInversiones();
+  if(pg==='pareja') renderAjustesParejaUI();
 }
 
 /* ── MONTH SCROLL ───────────────────────────────────────────────────────── */
