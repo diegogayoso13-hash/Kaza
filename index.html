@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.3';
+const MARTIFIN_VERSION = 'v9.4';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -2983,7 +2983,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.3</div>
+    <div class="drawer-header-version">v9.4</div>
   </div>
 
   <div class="drawer-body">
@@ -3185,6 +3185,10 @@ function getSubcatsList(cat) {
 
 const CAT_PARENT = {};
 Object.entries(SUBCATS).forEach(([cat, subs]) => subs.forEach(s => CAT_PARENT[s] = cat));
+function getCatParent(cat) {
+  if (DATA.customCats && DATA.customCats.some(c => c.nombre === cat)) return cat;
+  return CAT_PARENT[cat] || cat;
+}
 
 const HIST_CATS = {};
 
@@ -3325,7 +3329,7 @@ function getMesData(mes) {
   let cats = {};
   if(gl.length) {
     gl.forEach(g => {
-      const parent = CAT_PARENT[g.cat] || g.cat;
+      const parent = getCatParent(g.cat);
       cats[parent] = (cats[parent]||0) + g.monto_uyu;
       if(g.subcat) {
         const key = parent + ' > ' + g.subcat;
@@ -3341,7 +3345,7 @@ function getMesData(mes) {
   // Build subcats map: {cat: {subcat: total}}
   const subcatsMap = {};
   gl.forEach(g => {
-    const parent = CAT_PARENT[g.cat] || g.cat;
+    const parent = getCatParent(g.cat);
     if(g.subcat) {
       if(!subcatsMap[parent]) subcatsMap[parent] = {};
       subcatsMap[parent][g.subcat] = (subcatsMap[parent][g.subcat]||0) + g.monto_uyu;
