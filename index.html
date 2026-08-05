@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.1';
+const MARTIFIN_VERSION = 'v9.2';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -2983,7 +2983,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.1</div>
+    <div class="drawer-header-version">v9.2</div>
   </div>
 
   <div class="drawer-body">
@@ -3159,9 +3159,9 @@ let MONTHS = [];
 const HIST = {};
 
 const CAT_COLOR = {
-  Alimentacion:'#1DBA87',Casa:'#4b9ef0',Transporte:'#f0a500',
+  'Alimentación':'#1DBA87',Casa:'#4b9ef0',Transporte:'#f0a500',
   Servicios:'#a78bfa',Salud:'#f04b4b',Indumentaria:'#f472b6',
-  Actividades:'#34d399',Varios:'#9ca3af',Retiros:'#0ea5e9'
+  Ocio:'#34d399',Varios:'#9ca3af'
 };
 
 const SUBCATS = {
@@ -4040,7 +4040,7 @@ function guardarGasto() {
   const cat = document.getElementById('f-cat').value;
   const mes = document.getElementById('f-mes').value;
   const subcatEl = document.getElementById('f-subcat');
-  const subcat = (SUBCATS[cat] && subcatEl.value) ? subcatEl.value : null;
+  const subcat = (getSubcats()[cat] && subcatEl.value) ? subcatEl.value : null;
   if(!desc||!fecha||!mes) { toast(t('toast_campos')); return; }
   if(isNaN(monto) || monto <= 0) { toast(t('toast_monto_invalido') || 'El monto debe ser mayor a 0'); return; }
   const montoRedondeado = Math.round(monto);
@@ -4598,7 +4598,7 @@ function guardarEdicion() {
     monto: montoRedondeado,
     fecha: document.getElementById('e-fecha').value,
     cat,
-    subcat: (SUBCATS[cat] && subcatEl.value) ? subcatEl.value : null,
+    subcat: (getSubcats()[cat] && subcatEl.value) ? subcatEl.value : null,
     mes: document.getElementById('e-mes').value,
     moneda: mm.moneda,
     cambio: mm.cambio,
@@ -5140,8 +5140,8 @@ function renderCatAnalisis() {
     </div>`).join('');
 
   // Stacked chart
-  const CKEYS=['Alimentacion','Casa','Transporte','Servicios','Salud','Indumentaria','Varios','Actividades','Retiros'];
-  const colors=CKEYS.map(k=>CAT_COLOR[k]||'#888');
+  const CKEYS=getAllCats();
+  const colors=CKEYS.map(k=>getCatColor(k));
   document.getElementById('cat-chart-legend').innerHTML=CKEYS.map((k,i)=>
     `<span style="display:flex;align-items:center;gap:3px"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${colors[i]}"></span><span style="font-size:10px">${getCatLabel(k)}</span></span>`).join('');
   const el=document.getElementById('chart-cats-stack');
@@ -7228,7 +7228,7 @@ function guardarGastoRapido() {
   const cat = document.getElementById('qf-cat').value;
   const mes = document.getElementById('qf-mes').value;
   const subcatEl = document.getElementById('qf-subcat');
-  const subcat = (SUBCATS[cat] && subcatEl && subcatEl.value) ? subcatEl.value : null;
+  const subcat = (getSubcats()[cat] && subcatEl && subcatEl.value) ? subcatEl.value : null;
 
   if (!desc || !fecha || !mes) { toast(t('toast_campos')); return; }
   if (isNaN(monto) || monto <= 0) {
