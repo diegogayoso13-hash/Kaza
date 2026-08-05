@@ -2,7 +2,7 @@
    - Network-first para el HTML (evita stale cache del index)
    - Cache-first para el resto (fuentes, chart.js, supabase-js, sheetjs, iconos)
 */
-const CACHE = 'martifin-v40';
+const CACHE = 'martifin-v41';
 const ASSETS = [
   './',
   './index.html',

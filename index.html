@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.2';
+const MARTIFIN_VERSION = 'v9.3';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -2983,7 +2983,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.2</div>
+    <div class="drawer-header-version">v9.3</div>
   </div>
 
   <div class="drawer-body">
@@ -3493,6 +3493,9 @@ function renderResumenRapido() {
 /* ── CAT BARS ───────────────────────────────────────────────────────────── */
 
 function getCatLabel(cat) {
+  if (DATA.customCats && DATA.customCats.some(c => c.nombre === cat)) {
+    return cat;
+  }
   const map = {
     'Casa': t('cat_casa'),
     'Alimentación': t('cat_alim'),
