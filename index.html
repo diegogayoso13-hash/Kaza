@@ -365,6 +365,16 @@ const LANG = {
     card_subcats: 'Subcategorías',
     lbl_subcats_desc: 'Personalizá las subcategorías de cada categoría.',
     btn_restaurar: 'Restaurar por defecto',
+    card_cats: 'Categorías',
+    lbl_cats_desc: 'Agregá tus propias categorías de gastos, además de las predefinidas.',
+    lbl_nueva_cat_ph: 'Nueva categoría...',
+    msg_sin_cats_custom: 'Sin categorías propias. Agregá una abajo.',
+    lbl_gastos_en_cat: 'gasto(s) en esta categoría',
+    lbl_elegir_que_hacer: '¿Qué querés hacer con ellos?',
+    btn_mover_gastos: 'Mover a otra categoría',
+    btn_eliminar_cat_y_gastos: 'Eliminar categoría y gastos',
+    btn_cancelar: 'Cancelar',
+    confirm_eliminar_gastos_cat: '¿Eliminar definitivamente estos gastos? Esta acción no se puede deshacer.',
     card_pareja: 'Modo pareja',
     lbl_pareja_desc: 'Activá el modo hogar para ver los gastos divididos entre vos y tu pareja.',
     lbl_tu_nombre: 'Tu nombre',
@@ -471,6 +481,12 @@ const LANG = {
     toast_subcat_existe: 'Esa subcategoría ya existe',
     toast_subcat_nombre: 'Escribí el nombre de la subcategoría',
     toast_subcats_reset: 'Subcategorías restauradas ✓',
+    toast_cat_ok: 'Categoría agregada ✓',
+    toast_cat_existe: 'Esa categoría ya existe',
+    toast_cat_nombre: 'Escribí el nombre de la categoría',
+    toast_cat_del: 'Categoría eliminada',
+    toast_cat_movida: 'Gastos movidos y categoría eliminada ✓',
+    toast_cat_del_gastos: 'Categoría y gastos eliminados',
     toast_pareja_on: 'Modo pareja activado ✓',
     toast_pareja_off: 'Modo pareja desactivado',
     toast_pareja_nombre: 'Escribí el nombre de tu pareja',
@@ -811,6 +827,16 @@ const LANG = {
     card_subcats: 'Subcategories',
     lbl_subcats_desc: 'Customize the subcategories for each category.',
     btn_restaurar: 'Restore defaults',
+    card_cats: 'Categories',
+    lbl_cats_desc: 'Add your own expense categories, in addition to the built-in ones.',
+    lbl_nueva_cat_ph: 'New category...',
+    msg_sin_cats_custom: 'No custom categories yet. Add one below.',
+    lbl_gastos_en_cat: 'expense(s) in this category',
+    lbl_elegir_que_hacer: 'What do you want to do with them?',
+    btn_mover_gastos: 'Move to another category',
+    btn_eliminar_cat_y_gastos: 'Delete category and expenses',
+    btn_cancelar: 'Cancel',
+    confirm_eliminar_gastos_cat: 'Permanently delete these expenses? This action cannot be undone.',
     card_pareja: 'Couple mode',
     lbl_pareja_desc: 'Enable household mode to split expenses between you and your partner.',
     lbl_tu_nombre: 'Your name',
@@ -909,6 +935,12 @@ const LANG = {
     toast_subcat_existe: 'That subcategory already exists',
     toast_subcat_nombre: 'Enter the subcategory name',
     toast_subcats_reset: 'Subcategories restored ✓',
+    toast_cat_ok: 'Category added ✓',
+    toast_cat_existe: 'That category already exists',
+    toast_cat_nombre: 'Enter the category name',
+    toast_cat_del: 'Category deleted',
+    toast_cat_movida: 'Expenses moved and category deleted ✓',
+    toast_cat_del_gastos: 'Category and expenses deleted',
     toast_pareja_on: 'Couple mode enabled ✓',
     toast_pareja_off: 'Couple mode disabled',
     toast_pareja_nombre: 'Enter your partner\'s name',
@@ -1238,6 +1270,16 @@ const LANG = {
     card_subcats: 'Subcategorias',
     lbl_subcats_desc: 'Personalize as subcategorias de cada categoria.',
     btn_restaurar: 'Restaurar padrões',
+    card_cats: 'Categorias',
+    lbl_cats_desc: 'Adicione suas próprias categorias de despesas, além das já existentes.',
+    lbl_nueva_cat_ph: 'Nova categoria...',
+    msg_sin_cats_custom: 'Sem categorias próprias. Adicione uma abaixo.',
+    lbl_gastos_en_cat: 'despesa(s) nesta categoria',
+    lbl_elegir_que_hacer: 'O que você quer fazer com elas?',
+    btn_mover_gastos: 'Mover para outra categoria',
+    btn_eliminar_cat_y_gastos: 'Excluir categoria e despesas',
+    btn_cancelar: 'Cancelar',
+    confirm_eliminar_gastos_cat: 'Excluir definitivamente essas despesas? Esta ação não pode ser desfeita.',
     card_pareja: 'Modo casal',
     lbl_pareja_desc: 'Ative o modo doméstico para dividir os gastos entre você e seu parceiro.',
     lbl_tu_nombre: 'Seu nome',
@@ -1336,6 +1378,12 @@ const LANG = {
     toast_subcat_existe: 'Essa subcategoria já existe',
     toast_subcat_nombre: 'Digite o nome da subcategoria',
     toast_subcats_reset: 'Subcategorias restauradas ✓',
+    toast_cat_ok: 'Categoria adicionada ✓',
+    toast_cat_existe: 'Essa categoria já existe',
+    toast_cat_nombre: 'Digite o nome da categoria',
+    toast_cat_del: 'Categoria excluída',
+    toast_cat_movida: 'Despesas movidas e categoria excluída ✓',
+    toast_cat_del_gastos: 'Categoria e despesas excluídas',
     toast_pareja_on: 'Modo casal ativado ✓',
     toast_pareja_off: 'Modo casal desativado',
     toast_pareja_nombre: 'Digite o nome do seu parceiro',
@@ -2799,6 +2847,25 @@ tr:last-child td { border: none; }
       </div>
 
       <div class="card">
+        <div class="card-title"><span data-i18n="card_cats">Categorías</span></div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5" data-i18n="lbl_cats_desc">Agregá tus propias categorías de gastos, además de las predefinidas.</div>
+        <div id="cat-list" style="margin:10px 0"></div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <input type="text" id="cat-new-input" data-i18n-attr="placeholder" data-i18n="lbl_nueva_cat_ph" placeholder="Nueva categoría..." style="flex:1;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;outline:none">
+          <button class="btn" onclick="agregarCategoriaCustom()" style="padding:10px 16px;font-size:14px"><span data-i18n="btn_agregar">Agregar</span></button>
+        </div>
+        <div id="cat-delete-panel" style="display:none;margin-top:12px;padding:12px;background:var(--bg3);border-radius:var(--r-sm)">
+          <div id="cat-delete-msg" style="font-size:13px;margin-bottom:10px;line-height:1.5"></div>
+          <select id="cat-delete-target" style="width:100%;background:var(--bg4);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;appearance:none;-webkit-appearance:none;outline:none;margin-bottom:10px"></select>
+          <div style="display:flex;gap:8px">
+            <button class="btn" onclick="confirmarMoverGastosCat()" style="flex:1;font-size:13px;padding:10px"><span data-i18n="btn_mover_gastos">Mover a otra categoría</span></button>
+          </div>
+          <button class="btn-danger-sm" onclick="confirmarEliminarGastosCat()" style="width:100%;margin-top:8px;font-size:12px;padding:8px"><span data-i18n="btn_eliminar_cat_y_gastos">Eliminar categoría y gastos</span></button>
+          <button class="btn" onclick="cancelarEliminarCat()" style="width:100%;margin-top:8px;font-size:12px;color:var(--text3);border-color:var(--border);padding:8px"><span data-i18n="btn_cancelar">Cancelar</span></button>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-title"><span data-i18n="card_subcats">Subcategorías</span></div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5" data-i18n="lbl_subcats_desc">Personalizá las subcategorías de cada categoría.</div>
         <div class="field">
@@ -3029,6 +3096,17 @@ function getInvTipos() {
 }
 const CATS_LIST = ['Casa','Alimentación','Transporte','Salud','Indumentaria','Servicios','Ocio','Varios'];
 
+/* ── CATEGORÍAS PERSONALIZADAS (Fase 3) ──────────────────────────────────── */
+const CUSTOM_CAT_PALETTE = ['#e879f9','#22d3ee','#fb923c','#a3e635','#818cf8','#fbbf24','#2dd4bf','#f87171','#c084fc','#60a5fa'];
+function getAllCats() {
+  return CATS_LIST.concat((DATA.customCats || []).map(c => c.nombre));
+}
+function getCatColor(cat) {
+  if(CAT_COLOR[cat]) return CAT_COLOR[cat];
+  const custom = (DATA.customCats || []).find(c => c.nombre === cat);
+  return custom ? custom.color : '#888';
+}
+
 
 
 
@@ -3116,7 +3194,7 @@ const CAT_DIST = {
 };
 
 let DATA = { gastos:[], sueldos:{}, presupuestos:{}, presupuestoGeneral:{}, metas:[
-], gastosAhorros:[], retirosInversion:[], inversiones:[], invTipos:null};
+], gastosAhorros:[], retirosInversion:[], inversiones:[], invTipos:null, customCats:[]};
 
 let selMes = (()=>{
   const now = new Date();
@@ -3220,7 +3298,8 @@ function load() {
       gastosAhorros: p.gastosAhorros || [],
       retirosInversion: p.retirosInversion || [],
       inversiones: p.inversiones || [],
-      invTipos: p.invTipos || null
+      invTipos: p.invTipos || null,
+      customCats: p.customCats || []
     };
     migrarGastosMonedaV88();
     migrarInversionesMonedaV89();
@@ -4316,6 +4395,7 @@ function borrarMeta(i) {
 /* ── AJUSTES ─────────────────────────────────────────────────────────────── */
 function renderAjustes() {
   if(typeof renderAjustesParejaUI === "function") renderAjustesParejaUI();
+  initCatEditor();
   initSubcatEditor();
   // Meses list
   const gastosPorMes = {};
@@ -5277,7 +5357,8 @@ function applyCloudData(p) {
     pareja: p.pareja||DATA.pareja,
     subcats: p.subcats||null,
     metas: p.metas||DATA.metas,
-    gastosAhorros: p.gastosAhorros||[], retirosInversion: p.retirosInversion||[], inversiones: p.inversiones||[], invTipos: p.invTipos||null
+    gastosAhorros: p.gastosAhorros||[], retirosInversion: p.retirosInversion||[], inversiones: p.inversiones||[], invTipos: p.invTipos||null,
+    customCats: p.customCats||[]
   };
   migrarGastosMonedaV88();
   migrarInversionesMonedaV89();
@@ -5348,6 +5429,103 @@ async function cloudLoad() {
     _cloudLoaded = true;
     showSync('ok');
   }).catch(() => { _cloudLoaded = true; showSync('error'); });
+}
+
+/* ── CATEGORÍAS PERSONALIZADAS EDITOR ────────────────────────────────────── */
+let _pendingDeleteCatIdx = null;
+
+function initCatEditor() {
+  renderCatEditor();
+}
+
+function renderCatEditor() {
+  const list = document.getElementById('cat-list');
+  if(!list) return;
+  const custom = DATA.customCats || [];
+  if(!custom.length) {
+    list.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:8px 0">${t('msg_sin_cats_custom')}</div>`;
+    return;
+  }
+  list.innerHTML = custom.map((c,i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border)">
+      <span style="display:flex;align-items:center;gap:8px;font-size:14px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c.color}"></span>${esc(c.nombre)}</span>
+      <button class="btn-danger-sm" onclick="eliminarCategoriaCustom(${i})" style="font-size:11px;padding:3px 8px">✕</button>
+    </div>`).join('');
+}
+
+function agregarCategoriaCustom() {
+  const input = document.getElementById('cat-new-input');
+  const nombre = input?.value.trim();
+  if(!nombre) { toast(t('toast_cat_nombre')); return; }
+  const yaExiste = getAllCats().some(c => c.toLowerCase() === nombre.toLowerCase());
+  if(yaExiste) { toast(t('toast_cat_existe')); return; }
+  const custom = DATA.customCats ? [...DATA.customCats] : [];
+  const color = CUSTOM_CAT_PALETTE[custom.length % CUSTOM_CAT_PALETTE.length];
+  custom.push({ nombre, color });
+  DATA.customCats = custom;
+  if(input) input.value = '';
+  save();
+  renderCatEditor();
+  toast(t('toast_cat_ok'));
+}
+
+function eliminarCategoriaCustom(idx) {
+  const custom = DATA.customCats || [];
+  const cat = custom[idx];
+  if(!cat) return;
+  const count = DATA.gastos.filter(g => g.cat === cat.nombre).length;
+  if(!count) {
+    custom.splice(idx, 1);
+    DATA.customCats = custom;
+    save();
+    renderCatEditor();
+    toast(t('toast_cat_del'));
+    return;
+  }
+  _pendingDeleteCatIdx = idx;
+  document.getElementById('cat-delete-msg').innerHTML =
+    `<strong>${esc(cat.nombre)}</strong>: ${count} ${t('lbl_gastos_en_cat')}.<br>${t('lbl_elegir_que_hacer')}`;
+  const target = document.getElementById('cat-delete-target');
+  target.innerHTML = getAllCats().filter(c => c !== cat.nombre).map(c => `<option value="${esc(c)}">${getCatLabel(c)}</option>`).join('');
+  document.getElementById('cat-delete-panel').style.display = 'block';
+}
+
+function cancelarEliminarCat() {
+  _pendingDeleteCatIdx = null;
+  document.getElementById('cat-delete-panel').style.display = 'none';
+}
+
+function confirmarMoverGastosCat() {
+  if(_pendingDeleteCatIdx == null) return;
+  const custom = DATA.customCats || [];
+  const cat = custom[_pendingDeleteCatIdx];
+  const target = document.getElementById('cat-delete-target')?.value;
+  if(!cat || !target) return;
+  DATA.gastos.forEach(g => { if(g.cat === cat.nombre) g.cat = target; });
+  custom.splice(_pendingDeleteCatIdx, 1);
+  DATA.customCats = custom;
+  _pendingDeleteCatIdx = null;
+  document.getElementById('cat-delete-panel').style.display = 'none';
+  save();
+  renderCatEditor();
+  toast(t('toast_cat_movida'));
+}
+
+function confirmarEliminarGastosCat() {
+  if(_pendingDeleteCatIdx == null) return;
+  const custom = DATA.customCats || [];
+  const cat = custom[_pendingDeleteCatIdx];
+  if(!cat) return;
+  showConfirm(t('confirm_eliminar_gastos_cat'), function() {
+    DATA.gastos = DATA.gastos.filter(g => g.cat !== cat.nombre);
+    custom.splice(_pendingDeleteCatIdx, 1);
+    DATA.customCats = custom;
+    _pendingDeleteCatIdx = null;
+    document.getElementById('cat-delete-panel').style.display = 'none';
+    save();
+    renderCatEditor();
+    toast(t('toast_cat_del_gastos'));
+  });
 }
 
 /* ── SUBCATEGORÍAS EDITOR ────────────────────────────────────────────────── */
