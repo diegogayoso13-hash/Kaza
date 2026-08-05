@@ -3567,7 +3567,7 @@ function renderCatBars() {
   const max = sorted[0] ? sorted[0][1] : 1;
   document.getElementById('cat-bars').innerHTML = sorted.map(([cat,val]) => {
     const subs = d.subcatsMap[cat] ? Object.entries(d.subcatsMap[cat]).sort((a,b)=>b[1]-a[1]) : [];
-    const subHTML = subs.length ? `<div style="margin-top:6px;padding-left:10px;border-left:2px solid ${CAT_COLOR[cat]||'#555'}33">` +
+    const subHTML = subs.length ? `<div style="margin-top:6px;padding-left:10px;border-left:2px solid ${getCatColor(cat)}33">` +
       subs.map(([s,v])=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);padding:2px 0">
         <span>${s}</span><span style="font-family:'DM Mono',monospace">${fmt(v)}</span></div>`).join('') +
       `</div>` : '';
@@ -3577,7 +3577,7 @@ function renderCatBars() {
         <span class="bar-val">${fmt(val)}</span>
       </div>
       <div class="bar-track">
-        <div class="bar-fill" style="width:${Math.round(val/max*100)}%;background:${CAT_COLOR[cat]||'#888'}"></div>
+        <div class="bar-fill" style="width:${Math.round(val/max*100)}%;background:${getCatColor(cat)}"></div>
       </div>
       ${subHTML}
     </div>`;
@@ -3954,8 +3954,8 @@ function populateSelects() {
     if(!el) return;
     el.innerHTML = rev.map(m => `<option value="${m}">${getMonthDisplay(m)}</option>`).join('');
   });
-  // Populate category selects from CATS_LIST
-  const catOpts = CATS_LIST.map(c => `<option value="${c}">${getCatLabel(c)}</option>`).join('');
+  // Populate category selects from getAllCats() (originales + custom)
+  const catOpts = getAllCats().map(c => `<option value="${c}">${getCatLabel(c)}</option>`).join('');
   const fcat = document.getElementById('f-cat'); if(fcat) fcat.innerHTML = catOpts;
   const ecat = document.getElementById('e-cat'); if(ecat) ecat.innerHTML = catOpts;
   const hcat = document.getElementById('h-cat'); if(hcat) hcat.innerHTML = `<option value="">${t('lbl_todas')}</option>` + catOpts;
@@ -4530,7 +4530,7 @@ function abrirEdicion(id) {
   // Llenar categorías si el select está vacío
   const ecat = document.getElementById('e-cat');
   if(!ecat.options.length) {
-    const catOpts = CATS_LIST.map(c => `<option value="${c}">${getCatLabel(c)}</option>`).join('');
+    const catOpts = getAllCats().map(c => `<option value="${c}">${getCatLabel(c)}</option>`).join('');
     ecat.innerHTML = catOpts;
   }
 
@@ -4636,7 +4636,7 @@ function renderPresupuestoInputs() {
   } else if(resumen) {
     resumen.style.display = 'none';
   }
-  document.getElementById('p-inputs').innerHTML = CATS_LIST.map(cat=>`
+  document.getElementById('p-inputs').innerHTML = getAllCats().map(cat=>`
     <div>
       <div style="font-size:11px;color:var(--text2);margin-bottom:4px">${getCatLabel(cat)}</div>
       <input type="number" id="p-${cat}" value="${pres[cat]||''}" placeholder="0"
@@ -4650,7 +4650,7 @@ async function guardarPresupuesto() {
   const mes = document.getElementById('p-mes')?.value;
   if(!mes) return;
   const pres = {};
-  CATS_LIST.forEach(cat => {
+  getAllCats().forEach(cat => {
     const v = parseFloat(document.getElementById('p-'+cat)?.value||'0');
     if(v>0) pres[cat] = Math.round(v);
   });
@@ -4791,7 +4791,7 @@ function renderHistorial() {
       <td style="padding:6px 4px;font-size:11px;color:var(--text3);white-space:nowrap">${g.fecha.slice(5)}</td>
       <td style="padding:6px 4px">
         <div style="display:flex;align-items:center;gap:6px;overflow:hidden">
-          <span style="width:6px;height:6px;border-radius:50%;background:${CAT_COLOR[g.cat]||'#888'};flex-shrink:0"></span>
+          <span style="width:6px;height:6px;border-radius:50%;background:${getCatColor(g.cat)};flex-shrink:0"></span>
           <span style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.desc)}</span>
         </div>
       </td>
@@ -4803,7 +4803,7 @@ function renderHistorial() {
     tbody.innerHTML = items.map(g => `<tr>
       <td style="color:var(--text2);font-size:12px;white-space:nowrap">${g.fecha.slice(5)}</td>
       <td><div style="font-size:13px;font-weight:500">${esc(g.desc)}</div>
-        <div style="font-size:11px;color:${CAT_COLOR[g.cat]||'#888'}">${getCatLabel(g.cat)}${g.subcat?' › '+esc(g.subcat):''}</div></td>
+        <div style="font-size:11px;color:${getCatColor(g.cat)}">${getCatLabel(g.cat)}${g.subcat?' › '+esc(g.subcat):''}</div></td>
       <td style="text-align:right;font-weight:500;font-family:'DM Mono',monospace;font-size:13px;white-space:nowrap">${montoDisplay(g)}</td>
       <td style="padding:4px 0">
         <div class="hist-actions">
@@ -5103,12 +5103,12 @@ function renderCatAnalisis() {
         <span style="font-weight:500;font-family:'DM Mono',monospace;font-size:11px">${fmt(val)} <span style="color:var(--text3)">${Math.round(val/total*100)}%</span></span>
       </div>
       <div style="height:5px;background:var(--bg4);border-radius:3px;overflow:hidden">
-        <div style="height:100%;border-radius:3px;background:${CAT_COLOR[cat]||'#888'};width:${Math.round(val/max*100)}%"></div>
+        <div style="height:100%;border-radius:3px;background:${getCatColor(cat)};width:${Math.round(val/max*100)}%"></div>
       </div>
     </div>`).join('');
 
   // Vs presupuesto
-  const vsHTML = CATS_LIST.map(cat=>{
+  const vsHTML = getAllCats().map(cat=>{
     const real=d.cats[cat]||0; const bud=pres[cat]||0;
     if(real===0&&bud===0) return '';
     const diff=real-bud; const pct=bud>0?Math.round(diff/bud*100):null;
@@ -5125,7 +5125,7 @@ function renderCatAnalisis() {
 
   // Annual totals per category
   const anual = {};
-  CATS_LIST.forEach(cat=>{ anual[cat]=MONTHS.reduce((a,m)=>a+(getMesData(m).cats[cat]||0),0); });
+  getAllCats().forEach(cat=>{ anual[cat]=MONTHS.reduce((a,m)=>a+(getMesData(m).cats[cat]||0),0); });
   const anualSorted = Object.entries(anual).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
   const maxA = anualSorted[0]?.[1]||1;
   document.getElementById('cat-anual-bars').innerHTML = anualSorted.map(([cat,val])=>`
@@ -5135,7 +5135,7 @@ function renderCatAnalisis() {
         <span style="font-weight:500;font-family:'DM Mono',monospace;font-size:11px">${fmt(val)}</span>
       </div>
       <div style="height:5px;background:var(--bg4);border-radius:3px;overflow:hidden">
-        <div style="height:100%;border-radius:3px;background:${CAT_COLOR[cat]||'#888'};width:${Math.round(val/maxA*100)}%"></div>
+        <div style="height:100%;border-radius:3px;background:${getCatColor(cat)};width:${Math.round(val/maxA*100)}%"></div>
       </div>
     </div>`).join('');
 
@@ -5453,6 +5453,12 @@ function renderCatEditor() {
     </div>`).join('');
 }
 
+function refrescarSelectsDeCategoria() {
+  if(typeof populateSelects === 'function') populateSelects();
+  if(typeof populateSelectsExtra === 'function') populateSelectsExtra();
+  if(typeof initSubcatEditor === 'function') initSubcatEditor();
+}
+
 function agregarCategoriaCustom() {
   const input = document.getElementById('cat-new-input');
   const nombre = input?.value.trim();
@@ -5466,7 +5472,15 @@ function agregarCategoriaCustom() {
   if(input) input.value = '';
   save();
   renderCatEditor();
+  refrescarSelectsDeCategoria();
   toast(t('toast_cat_ok'));
+}
+
+function limpiarSubcatsDeCategoria(nombre) {
+  if(!DATA.subcats || !DATA.subcats[nombre]) return;
+  const sc = {...DATA.subcats};
+  delete sc[nombre];
+  DATA.subcats = sc;
 }
 
 function eliminarCategoriaCustom(idx) {
@@ -5477,8 +5491,10 @@ function eliminarCategoriaCustom(idx) {
   if(!count) {
     custom.splice(idx, 1);
     DATA.customCats = custom;
+    limpiarSubcatsDeCategoria(cat.nombre);
     save();
     renderCatEditor();
+    refrescarSelectsDeCategoria();
     toast(t('toast_cat_del'));
     return;
   }
@@ -5504,10 +5520,12 @@ function confirmarMoverGastosCat() {
   DATA.gastos.forEach(g => { if(g.cat === cat.nombre) g.cat = target; });
   custom.splice(_pendingDeleteCatIdx, 1);
   DATA.customCats = custom;
+  limpiarSubcatsDeCategoria(cat.nombre);
   _pendingDeleteCatIdx = null;
   document.getElementById('cat-delete-panel').style.display = 'none';
   save();
   renderCatEditor();
+  refrescarSelectsDeCategoria();
   toast(t('toast_cat_movida'));
 }
 
@@ -5520,10 +5538,12 @@ function confirmarEliminarGastosCat() {
     DATA.gastos = DATA.gastos.filter(g => g.cat !== cat.nombre);
     custom.splice(_pendingDeleteCatIdx, 1);
     DATA.customCats = custom;
+    limpiarSubcatsDeCategoria(cat.nombre);
     _pendingDeleteCatIdx = null;
     document.getElementById('cat-delete-panel').style.display = 'none';
     save();
     renderCatEditor();
+    refrescarSelectsDeCategoria();
     toast(t('toast_cat_del_gastos'));
   });
 }
@@ -5532,7 +5552,7 @@ function confirmarEliminarGastosCat() {
 function initSubcatEditor() {
   const sel = document.getElementById('sc-cat-sel');
   if(!sel) return;
-  sel.innerHTML = CATS_LIST.map(c => `<option value="${c}">${getCatLabel(c)}</option>`).join('');
+  sel.innerHTML = getAllCats().map(c => `<option value="${c}">${getCatLabel(c)}</option>`).join('');
   renderSubcatEditor();
 }
 
@@ -7104,8 +7124,9 @@ function abrirGastoRapido() {
   const todayStr = now.toISOString().split('T')[0];
 
   const qfCat = document.getElementById('qf-cat');
-  qfCat.innerHTML = CATS_LIST.map(c => `<option value="${c}">${getCatLabel(c)}</option>`).join('');
-  qfCat.value = CATS_LIST[0];
+  const qfAllCats = getAllCats();
+  qfCat.innerHTML = qfAllCats.map(c => `<option value="${c}">${getCatLabel(c)}</option>`).join('');
+  qfCat.value = qfAllCats[0];
   delete qfCat.dataset.userSet;
 
   const qfMes = document.getElementById('qf-mes');
