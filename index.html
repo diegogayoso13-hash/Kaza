@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.5';
+const MARTIFIN_VERSION = 'v9.6';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -2983,7 +2983,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.5</div>
+    <div class="drawer-header-version">v9.6</div>
   </div>
 
   <div class="drawer-body">
@@ -6997,6 +6997,34 @@ function normalizeStr(s) {
   return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
+/* Detecta categoría (original o custom) a partir del texto de la descripción */
+function detectarCategoriaAuto(desc) {
+  const descNorm = normalizeStr(desc);
+
+  for (const [cat, keywords] of Object.entries(CAT_KEYWORDS)) {
+    if (keywords.some(kw => descNorm.includes(normalizeStr(kw)))) return cat;
+  }
+
+  if (DATA.customCats) {
+    for (const c of DATA.customCats) {
+      const nomNorm = normalizeStr(c.nombre);
+      if (nomNorm.length >= 3 && descNorm.includes(nomNorm)) return c.nombre;
+    }
+  }
+
+  if (DATA.customCats && DATA.subcats) {
+    for (const c of DATA.customCats) {
+      const subs = DATA.subcats[c.nombre] || [];
+      for (const sub of subs) {
+        const subNorm = normalizeStr(sub);
+        if (subNorm.length >= 3 && descNorm.includes(subNorm)) return c.nombre;
+      }
+    }
+  }
+
+  return null;
+}
+
 function showSubcatHint(hintId) {
   const hint = document.getElementById(hintId);
   if (!hint) return;
@@ -7059,21 +7087,17 @@ function autoDetectCat(texto) {
   const catSelect = document.getElementById('f-cat');
   if (!catSelect || catSelect.dataset.userSet === '1') return;
 
-  for (const [cat, keywords] of Object.entries(CAT_KEYWORDS)) {
-    if (keywords.some(kw => desc.includes(kw))) {
-      if (catSelect.value !== cat) {
-        const option = Array.from(catSelect.options).find(o => o.value === cat);
-        if (option) {
-          catSelect.value = cat;
-          if (typeof updateSubcat === 'function') updateSubcat();
-          catSelect.classList.remove('cat-flash');
-          void catSelect.offsetWidth;
-          catSelect.classList.add('cat-flash');
-          catSelect.addEventListener('animationend', () => catSelect.classList.remove('cat-flash'), { once: true });
-          showAutoDetectHint();
-        }
-      }
-      return;
+  const cat = detectarCategoriaAuto(desc);
+  if (cat && catSelect.value !== cat) {
+    const option = Array.from(catSelect.options).find(o => o.value === cat);
+    if (option) {
+      catSelect.value = cat;
+      if (typeof updateSubcat === 'function') updateSubcat();
+      catSelect.classList.remove('cat-flash');
+      void catSelect.offsetWidth;
+      catSelect.classList.add('cat-flash');
+      catSelect.addEventListener('animationend', () => catSelect.classList.remove('cat-flash'), { once: true });
+      showAutoDetectHint();
     }
   }
 }
@@ -7084,12 +7108,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (catSelect) {
     catSelect.addEventListener('change', () => { catSelect.dataset.userSet = '1'; hideAutoDetectHint(); });
     catSelect.addEventListener('click', hideAutoDetectHint);
-  }
-  const descInput = document.getElementById('f-desc');
-  if (descInput) {
-    descInput.addEventListener('focus', () => {
-      if (catSelect) delete catSelect.dataset.userSet;
-    });
   }
   const subcatSelect = document.getElementById('f-subcat');
   if (subcatSelect) {
@@ -7114,6 +7132,10 @@ function limpiarFormulariosCargar() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  const catSel = document.getElementById('f-cat');
+  if (catSel) delete catSel.dataset.userSet;
+  const subcatSel = document.getElementById('f-subcat');
+  if (subcatSel) delete subcatSel.dataset.userSet;
 }
 
 function fabAddGasto() {
@@ -7217,16 +7239,12 @@ function autoDetectCatRapido(texto) {
   const catSelect = document.getElementById('qf-cat');
   if (!catSelect || catSelect.dataset.userSet === '1') return;
 
-  for (const [cat, keywords] of Object.entries(CAT_KEYWORDS)) {
-    if (keywords.some(kw => desc.includes(kw))) {
-      if (catSelect.value !== cat) {
-        const opt = Array.from(catSelect.options).find(o => o.value === cat);
-        if (opt) {
-          catSelect.value = cat;
-          actualizarQfSubcat();
-        }
-      }
-      return;
+  const cat = detectarCategoriaAuto(desc);
+  if (cat && catSelect.value !== cat) {
+    const opt = Array.from(catSelect.options).find(o => o.value === cat);
+    if (opt) {
+      catSelect.value = cat;
+      actualizarQfSubcat();
     }
   }
 }
