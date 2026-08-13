@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.6';
+const MARTIFIN_VERSION = 'v9.7';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -2983,7 +2983,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.6</div>
+    <div class="drawer-header-version">v9.7</div>
   </div>
 
   <div class="drawer-body">
@@ -6986,7 +6986,7 @@ const CAT_KEYWORDS = {
   'Servicios': ['luz','agua','gas','internet','wifi','fibertel','antel','movistar','claro','personal','telecentro','ute','ose','netflix','spotify','disney','hbo','prime','amazon prime','paramount','youtube','apple music','tidal','deezer','icloud','dropbox','google drive','onedrive','chatgpt','cable','directv','abono','suscripcion','suscripción','subscription','streaming','servicio','factura','bill'],
   'Casa': ['alquiler','rent','renta','aluguel','hipoteca','mortgage','expensas','condominio','condomínio','reforma','mudanza','mudança','moving','muebles','furniture','móveis','decoracion','decoración','decoration','decoração','limpieza','cleaning','limpeza','ferreteria','ferretería','easy','sodimac','ikea','construccion','construcción','pintura','paint','tinta','jardín','jardin','garden','plantas'],
   'Indumentaria': ['ropa','clothes','clothing','roupa','zapatillas','sneakers','tênis','tenis','zapatos','shoes','sapatos','remera','camiseta','tshirt','t-shirt','camisa','shirt','pantalon','pantalón','pants','jeans','vestido','dress','campera','jacket','abrigo','coat','adidas','nike','puma','reebok','zara','h&m','forever 21','bershka','pull&bear','uniqlo','gap','topshop','moda','fashion'],
-  'Ocio': ['cine','cinema','movie','pelicula','película','teatro','theater','theatre','teatro','concierto','concert','show','recital','festival','boliche','disco','bar','pub','entrada','ticket','ingresso','museo','museum','museu','parque','park','juego','juegos','game','games','jogo','jogos','playstation','xbox','nintendo','steam','spotify','viaje','trip','vacaciones','vacation','férias','hotel','airbnb','booking','avion','avión','flight','voo','despegar','pasaje','salida','gym','gimnasio','gimnásio','fitness','deporte','sport','esporte'],
+  'Ocio': ['cine','cinema','movie','pelicula','película','teatro','theater','theatre','teatro','concierto','concert','show','recital','festival','boliche','disco','bar','pub','entrada','ticket','ingresso','museo','museum','museu','parque','park','juego','juegos','game','games','jogo','jogos','playstation','xbox','nintendo','steam','spotify','viaje','trip','vacaciones','vacation','férias','hotel','airbnb','booking','avion','avión','flight','voo','despegar','pasaje','salida','fitness','deporte','sport','esporte'],
   'Varios': []
 };
 
@@ -6997,12 +6997,23 @@ function normalizeStr(s) {
   return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
+/* Subcategorías originales demasiado genéricas como para usarlas de keyword */
+const SUBCAT_AUTODETECT_EXCLUDE = new Set(['Trabajo', 'Otros']);
+
 /* Detecta categoría (original o custom) a partir del texto de la descripción */
 function detectarCategoriaAuto(desc) {
   const descNorm = normalizeStr(desc);
 
   for (const [cat, keywords] of Object.entries(CAT_KEYWORDS)) {
     if (keywords.some(kw => descNorm.includes(normalizeStr(kw)))) return cat;
+  }
+
+  for (const [cat, subs] of Object.entries(SUBCATS)) {
+    for (const sub of subs) {
+      if (SUBCAT_AUTODETECT_EXCLUDE.has(sub)) continue;
+      const subNorm = normalizeStr(sub);
+      if (subNorm.length >= 3 && descNorm.includes(subNorm)) return cat;
+    }
   }
 
   if (DATA.customCats) {
