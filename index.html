@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.4';
+const MARTIFIN_VERSION = 'v9.5';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -2983,7 +2983,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.4</div>
+    <div class="drawer-header-version">v9.5</div>
   </div>
 
   <div class="drawer-body">
@@ -3339,7 +3339,10 @@ function getMesData(mes) {
   } else if(HIST_CATS[mes]) {
     cats = {...HIST_CATS[mes]};
   } else if(h.gastos) {
-    Object.entries(CAT_DIST).forEach(([k,v]) => { cats[k] = Math.round(h.gastos * v); });
+    Object.entries(CAT_DIST).forEach(([k,v]) => {
+      if (DATA.customCats && DATA.customCats.some(c => c.nombre === k)) return;
+      cats[k] = Math.round(h.gastos * v);
+    });
   }
   const totalGastos = gl.length ? gl.reduce((a,g)=>a+g.monto_uyu,0) : (h.gastos || 0);
   // Build subcats map: {cat: {subcat: total}}
