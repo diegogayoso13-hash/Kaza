@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.10';
+const MARTIFIN_VERSION = 'v9.11';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -653,6 +653,14 @@ const LANG = {
     mig_btn_cloud: 'Quedarme con los de la nube',
     mig_btn_cancel: 'Cancelar y cerrar sesión',
     mig_keep_cloud_warn: 'Vas a perder los gastos cargados en este dispositivo. ¿Estás seguro?',
+    mig_actualizado: 'Última actualización',
+    mig_cloud_error: 'No se pudo cargar el detalle de tu cuenta.',
+    mig_perdida_si_local: 'Estos meses de tu cuenta se van a perder',
+    mig_perdida_si_cloud: 'Estos meses de este dispositivo se van a perder',
+    perdida_conteo_prefijo: 'Se pierden',
+    perdida_conteo_meses: 'meses',
+    perdida_conteo_de: 'de',
+    perdida_conteo_a: 'a',
     toast_register_migrated: 'Cuenta creada — datos sincronizados ✓',
     toast_register_partial: 'Cuenta creada. Tus datos se sincronizarán cuando haya conexión.',
     toast_login_migrated: 'Datos guardados en tu cuenta ✓',
@@ -1120,6 +1128,14 @@ const LANG = {
     mig_btn_cloud: 'Keep the ones in the cloud',
     mig_btn_cancel: 'Cancel and sign out',
     mig_keep_cloud_warn: 'You will lose the expenses on this device. Are you sure?',
+    mig_actualizado: 'Last updated',
+    mig_cloud_error: "Couldn't load your account's details.",
+    mig_perdida_si_local: 'These months from your account will be lost',
+    mig_perdida_si_cloud: 'These months from this device will be lost',
+    perdida_conteo_prefijo: "You'll lose",
+    perdida_conteo_meses: 'months',
+    perdida_conteo_de: 'from',
+    perdida_conteo_a: 'to',
     toast_register_migrated: 'Account created — data synced ✓',
     toast_register_partial: 'Account created. Your data will sync when online.',
     toast_login_migrated: 'Data saved to your account ✓',
@@ -1578,6 +1594,14 @@ const LANG = {
     mig_btn_cloud: 'Manter os da nuvem',
     mig_btn_cancel: 'Cancelar e sair',
     mig_keep_cloud_warn: 'Você vai perder os gastos deste dispositivo. Tem certeza?',
+    mig_actualizado: 'Última atualização',
+    mig_cloud_error: 'Não foi possível carregar o detalhe da sua conta.',
+    mig_perdida_si_local: 'Esses meses da sua conta vão se perder',
+    mig_perdida_si_cloud: 'Esses meses deste dispositivo vão se perder',
+    perdida_conteo_prefijo: 'Você vai perder',
+    perdida_conteo_meses: 'meses',
+    perdida_conteo_de: 'de',
+    perdida_conteo_a: 'a',
     toast_register_migrated: 'Conta criada — dados sincronizados ✓',
     toast_register_partial: 'Conta criada. Seus dados serão sincronizados quando online.',
     toast_login_migrated: 'Dados salvos na sua conta ✓',
@@ -3033,7 +3057,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.10</div>
+    <div class="drawer-header-version">v9.11</div>
   </div>
 
   <div class="drawer-body">
@@ -3067,7 +3091,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.10</div>
+    <div class="drawer-footer-version">Martifin v9.11</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -6188,6 +6212,69 @@ async function onRestoreFileSelected(evt) {
   mostrarResumenRestore(parsed);
 }
 
+/* ── COMPARACIÓN DE MESES (compartida entre restore y conflicto de sync) ──
+ * Un mismo lenguaje visual para "estás por reemplazar/descartar datos":
+ * chips de mes coloreados + aviso de texto explícito con los meses que se
+ * pierden. Usado por mostrarResumenRestore() y showMigrationConflictModal().
+ * ─────────────────────────────────────────────────────────────────────── */
+function renderMesPillHTML(mes, tipo) {
+  const styles = {
+    perdido: 'color:var(--red);border-color:var(--red)',
+    ganado: 'color:#1DBA87;border-color:#1DBA87',
+    neutral: 'color:var(--text2);border-color:var(--border2)'
+  };
+  return `<span style="font-size:11px;padding:3px 8px;border-radius:20px;border:0.5px solid;${styles[tipo]}">${esc(getMonthDisplay(mes))}</span>`;
+}
+
+function renderMesesChipsHTML(meses, perdidos, ganados) {
+  return meses.map(m => renderMesPillHTML(m, perdidos.includes(m) ? 'perdido' : ganados.includes(m) ? 'ganado' : 'neutral')).join('');
+}
+
+function mesOrdenCronologico(mes) {
+  const order = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const partes = mes.split(' ');
+  return parseInt(partes[1]) * 12 + order.indexOf(partes[0]);
+}
+
+// Con pocos meses (≤4) los nombramos todos — es información nueva.
+// Con muchos, los chips ya lo comunican con color: listar 17 nombres es
+// ruido y hace que "perdés 1 mes" y "perdés 17" se lean igual de graves.
+// A partir de 5 mostramos conteo + rango cronológico en su lugar.
+const PERDIDA_AVISO_MAX_LISTADOS = 4;
+
+function buildPerdidaAvisoHTML(mesesPerdidos, labelKey) {
+  if(!mesesPerdidos.length) return '';
+  if(mesesPerdidos.length > PERDIDA_AVISO_MAX_LISTADOS) {
+    const ordenados = [...mesesPerdidos].sort((a, b) => mesOrdenCronologico(a) - mesOrdenCronologico(b));
+    const primero = esc(getMonthDisplay(ordenados[0]));
+    const ultimo = esc(getMonthDisplay(ordenados[ordenados.length - 1]));
+    return `⚠️ ${t('perdida_conteo_prefijo')} ${mesesPerdidos.length} ${t('perdida_conteo_meses')} (${t('perdida_conteo_de')} ${primero} ${t('perdida_conteo_a')} ${ultimo})`;
+  }
+  return `⚠️ ${t(labelKey)}: ${mesesPerdidos.map(m => esc(getMonthDisplay(m))).join(', ')}`;
+}
+
+// Peso visual proporcional a la gravedad: con muchos meses en juego, la
+// caja pasa de "aviso liviano" (fondo tenue) a "bloque sólido" — para que
+// se note la diferencia entre perder un mes y perder casi todo sin tener
+// que leer el número.
+function aplicarSeveridadAviso(el, count) {
+  if(count > PERDIDA_AVISO_MAX_LISTADOS) {
+    el.style.background = 'var(--red)';
+    el.style.color = '#fff';
+    el.style.fontWeight = '700';
+  } else {
+    el.style.background = 'var(--red-dim)';
+    el.style.color = 'var(--red)';
+    el.style.fontWeight = '400';
+  }
+}
+
+function formatFechaLabel(isoString, labelKey) {
+  const fecha = isoString ? new Date(isoString) : null;
+  if(!fecha || isNaN(fecha)) return '';
+  return `${t(labelKey)} ${fecha.toLocaleDateString('es-UY', {day:'2-digit',month:'long',year:'numeric'})}`;
+}
+
 function mostrarResumenRestore(backup) {
   _pendingRestoreData = backup;
   const d = backup.data;
@@ -6196,37 +6283,19 @@ function mostrarResumenRestore(backup) {
   const perdidos = actualMeses.filter(m => !backupMeses.includes(m));
   const ganados = backupMeses.filter(m => !actualMeses.includes(m));
 
-  const pill = (m, tipo) => {
-    const styles = {
-      perdido: 'color:var(--red);border-color:var(--red)',
-      ganado: 'color:#1DBA87;border-color:#1DBA87',
-      neutral: 'color:var(--text2);border-color:var(--border2)'
-    };
-    return `<span style="font-size:11px;padding:3px 8px;border-radius:20px;border:0.5px solid;${styles[tipo]}">${esc(getMonthDisplay(m))}</span>`;
-  };
-
-  const fechaEl = document.getElementById('restore-backup-fecha');
-  const fecha = backup.exportedAt ? new Date(backup.exportedAt) : null;
-  fechaEl.textContent = (fecha && !isNaN(fecha))
-    ? `${t('restore_exportado')} ${fecha.toLocaleDateString('es-UY', {day:'2-digit',month:'long',year:'numeric'})}`
-    : '';
+  document.getElementById('restore-backup-fecha').textContent = formatFechaLabel(backup.exportedAt, 'restore_exportado');
 
   document.getElementById('restore-backup-gastos').textContent = `${d.gastos.length} ${t('kpi_gastos').toLowerCase()}`;
-  document.getElementById('restore-backup-meses').innerHTML =
-    backupMeses.map(m => pill(m, ganados.includes(m) ? 'ganado' : 'neutral')).join('');
+  document.getElementById('restore-backup-meses').innerHTML = renderMesesChipsHTML(backupMeses, [], ganados);
 
   document.getElementById('restore-actual-gastos').textContent = `${DATA.gastos.length} ${t('kpi_gastos').toLowerCase()}`;
-  document.getElementById('restore-actual-meses').innerHTML =
-    actualMeses.map(m => pill(m, perdidos.includes(m) ? 'perdido' : 'neutral')).join('');
+  document.getElementById('restore-actual-meses').innerHTML = renderMesesChipsHTML(actualMeses, perdidos, []);
 
   const avisoEl = document.getElementById('restore-perdida-aviso');
-  if(perdidos.length) {
-    avisoEl.style.display = 'block';
-    avisoEl.innerHTML = `⚠ ${t('restore_perdida_aviso')}: ${perdidos.map(m => esc(getMonthDisplay(m))).join(', ')}`;
-  } else {
-    avisoEl.style.display = 'none';
-    avisoEl.innerHTML = '';
-  }
+  const avisoHTML = buildPerdidaAvisoHTML(perdidos, 'restore_perdida_aviso');
+  avisoEl.style.display = avisoHTML ? 'block' : 'none';
+  avisoEl.innerHTML = avisoHTML;
+  if(avisoHTML) aplicarSeveridadAviso(avisoEl, perdidos.length);
 
   const verEl = document.getElementById('restore-warning-version');
   const backupVersionNum = Number(backup.version);
@@ -6432,7 +6501,7 @@ function countLocal(snap) {
 async function cloudHasData(userId) {
   try {
     const token = await getAuthToken();
-    const r = await fetch(SB_URL + '/rest/v1/sync_data?id=eq.' + encodeURIComponent(userId) + '&select=data', {
+    const r = await fetch(SB_URL + '/rest/v1/sync_data?id=eq.' + encodeURIComponent(userId) + '&select=data,updated_at', {
       headers: {'apikey':SB_KEY,'Authorization':'Bearer '+token}
     });
     if(!r.ok) return { hasData: false, gastos: 0, sueldos: 0, error: true };
@@ -6445,7 +6514,8 @@ async function cloudHasData(userId) {
       hasData: gastosCount > 0 || sueldosCount > 0,
       gastos: gastosCount,
       sueldos: sueldosCount,
-      data: d
+      data: d,
+      updatedAt: rows[0].updated_at || null
     };
   } catch(e) {
     console.error('cloudHasData error:', e);
@@ -6552,10 +6622,10 @@ async function handlePostLoginMigration(prevAnonId, prevLocalSnapshot) {
     return;
   }
 
-  const localCounts = countLocal(prevLocalSnapshot);
+  const localCounts = { ...countLocal(prevLocalSnapshot), months: prevLocalSnapshot?.months || [] };
   const cloudCounts = cloudResult.error
-    ? { gastos: '?', sueldos: '?' }
-    : { gastos: cloudResult.gastos, sueldos: cloudResult.sueldos };
+    ? { gastos: '?', sueldos: '?', months: [], error: true }
+    : { gastos: cloudResult.gastos, sueldos: cloudResult.sueldos, months: cloudResult.data?.months || [], updatedAt: cloudResult.updatedAt };
 
   showMigrationConflictModal(localCounts, cloudCounts, {
     keepLocal: () => applyMigrationKeepLocal(prevAnonId, prevLocalSnapshot),
@@ -6633,10 +6703,42 @@ function showMigrationConflictModal(local, cloud, callbacks) {
   document.getElementById('mig-local-sueldos').textContent = local.sueldos;
   document.getElementById('mig-cloud-gastos').textContent = cloud.gastos;
   document.getElementById('mig-cloud-sueldos').textContent = cloud.sueldos;
+
+  const localMeses = local.months || [];
+  const cloudMeses = cloud.error ? [] : (cloud.months || []);
+  const soloLocal = cloud.error ? [] : localMeses.filter(m => !cloudMeses.includes(m));
+  const soloCloud = cloud.error ? [] : cloudMeses.filter(m => !localMeses.includes(m));
+
+  document.getElementById('mig-local-meses').innerHTML = renderMesesChipsHTML(localMeses, soloLocal, []);
+  document.getElementById('mig-cloud-meses').innerHTML = cloud.error ? '' : renderMesesChipsHTML(cloudMeses, soloCloud, []);
+
+  const cloudErrorEl = document.getElementById('mig-cloud-error');
+  cloudErrorEl.style.display = cloud.error ? 'block' : 'none';
+  document.getElementById('mig-cloud-fecha').textContent = cloud.error ? '' : formatFechaLabel(cloud.updatedAt, 'mig_actualizado');
+
+  // Cada aviso lleva su propio ícono (☁️/📱) para que sean distinguibles de
+  // un vistazo, sin depender de leer el número exacto de gastos de cada lado.
+  const localPerdidaEl = document.getElementById('mig-local-perdida');
+  const localPerdidaHTML = buildPerdidaAvisoHTML(soloCloud, 'mig_perdida_si_local');
+  localPerdidaEl.style.display = localPerdidaHTML ? 'block' : 'none';
+  localPerdidaEl.innerHTML = localPerdidaHTML ? `☁️ ${localPerdidaHTML}` : '';
+  if(localPerdidaHTML) aplicarSeveridadAviso(localPerdidaEl, soloCloud.length);
+
+  const cloudPerdidaEl = document.getElementById('mig-cloud-perdida');
+  const cloudPerdidaHTML = buildPerdidaAvisoHTML(soloLocal, 'mig_perdida_si_cloud');
+  cloudPerdidaEl.style.display = cloudPerdidaHTML ? 'block' : 'none';
+  cloudPerdidaEl.innerHTML = cloudPerdidaHTML ? `📱 ${cloudPerdidaHTML}` : '';
+  if(cloudPerdidaHTML) aplicarSeveridadAviso(cloudPerdidaEl, soloLocal.length);
+
   document.getElementById('mig-btn-local').onclick = callbacks.keepLocal;
   document.getElementById('mig-btn-cloud').onclick = callbacks.keepCloud;
   document.getElementById('mig-btn-cancel').onclick = callbacks.cancel;
   modal.style.display = 'flex';
+  // La caja del dispositivo tiene que verse primero al abrir — sin este
+  // reset, si el modal ya se había mostrado antes y quedó scrolleado, se
+  // reabre en la misma posición y arranca mostrando la nube.
+  const scrollBox = document.getElementById('mig-scroll-box');
+  if(scrollBox) scrollBox.scrollTop = 0;
 }
 
 function hideMigrationConflictModal() {
@@ -7599,20 +7701,26 @@ document.addEventListener('DOMContentLoaded', syncSwipeToggleUI);
 
 <!-- ── MODAL DE CONFLICTO DE MIGRACIÓN ─────────────────────────────────── -->
 <div id="migration-conflict-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:750;align-items:center;justify-content:center;padding:20px">
-  <div style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);padding:24px;width:100%;max-width:380px">
+  <div id="mig-scroll-box" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);padding:24px;width:100%;max-width:380px;max-height:85vh;overflow-y:auto">
     <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px"><span data-i18n="mig_title">Tenés datos en este dispositivo y en tu cuenta</span></div>
     <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:16px"><span data-i18n="mig_desc">Elegí qué datos querés conservar.</span></div>
 
     <div style="background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);padding:12px;margin-bottom:10px">
       <div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px"><span data-i18n="mig_local_label">En este dispositivo</span></div>
-      <div style="font-size:13px;color:var(--text)"><span id="mig-local-gastos">0</span> <span data-i18n="mig_gastos_label">gastos</span>, <span id="mig-local-sueldos">0</span> <span data-i18n="mig_sueldos_label">sueldos</span></div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px"><span id="mig-local-gastos">0</span> <span data-i18n="mig_gastos_label">gastos</span>, <span id="mig-local-sueldos">0</span> <span data-i18n="mig_sueldos_label">sueldos</span></div>
+      <div id="mig-local-meses" style="display:flex;flex-wrap:wrap;gap:5px"></div>
     </div>
     <div style="background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);padding:12px;margin-bottom:18px">
       <div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px"><span data-i18n="mig_cloud_label">En tu cuenta</span></div>
-      <div style="font-size:13px;color:var(--text)"><span id="mig-cloud-gastos">0</span> <span data-i18n="mig_gastos_label">gastos</span>, <span id="mig-cloud-sueldos">0</span> <span data-i18n="mig_sueldos_label">sueldos</span></div>
+      <div id="mig-cloud-fecha" style="font-size:11px;color:var(--text3);margin-bottom:6px"></div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px"><span id="mig-cloud-gastos">0</span> <span data-i18n="mig_gastos_label">gastos</span>, <span id="mig-cloud-sueldos">0</span> <span data-i18n="mig_sueldos_label">sueldos</span></div>
+      <div id="mig-cloud-meses" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+      <div id="mig-cloud-error" style="display:none;font-size:12px;color:var(--text3);margin-top:6px"><span data-i18n="mig_cloud_error">No se pudo cargar el detalle de tu cuenta.</span></div>
     </div>
 
+    <div id="mig-local-perdida" style="display:none;background:var(--red-dim);border:0.5px solid var(--red);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;font-size:12px;color:var(--red);line-height:1.5"></div>
     <button id="mig-btn-local" style="width:100%;padding:13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-size:14px;font-weight:500;cursor:pointer;margin-bottom:8px;text-align:left;padding-left:16px"><span data-i18n="mig_btn_local">Quedarme con los de este dispositivo</span></button>
+    <div id="mig-cloud-perdida" style="display:none;background:var(--red-dim);border:0.5px solid var(--red);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;font-size:12px;color:var(--red);line-height:1.5"></div>
     <button id="mig-btn-cloud" style="width:100%;padding:13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-size:14px;font-weight:500;cursor:pointer;margin-bottom:8px;text-align:left;padding-left:16px"><span data-i18n="mig_btn_cloud">Quedarme con los de la nube</span></button>
     <button id="mig-btn-cancel" style="width:100%;padding:13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-size:14px;font-weight:500;cursor:pointer;text-align:left;padding-left:16px"><span data-i18n="mig_btn_cancel">Cancelar y cerrar sesión</span></button>
   </div>
@@ -7639,7 +7747,7 @@ document.addEventListener('DOMContentLoaded', syncSwipeToggleUI);
       <div id="restore-actual-meses" style="display:flex;flex-wrap:wrap;gap:5px"></div>
     </div>
 
-    <div id="restore-perdida-aviso" style="display:none;font-size:12px;color:var(--red);line-height:1.5;margin-bottom:16px"></div>
+    <div id="restore-perdida-aviso" style="display:none;background:var(--red-dim);border:0.5px solid var(--red);border-radius:var(--r-sm);padding:10px 12px;font-size:12px;color:var(--red);line-height:1.5;margin-bottom:16px"></div>
 
     <div style="display:flex;gap:10px">
       <button onclick="cerrarResumenRestore()" style="flex:1;padding:13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:14px;font-weight:500;cursor:pointer" data-i18n="lbl_cancelar">Cancelar</button>
