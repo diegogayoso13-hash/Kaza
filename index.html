@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.8';
+const MARTIFIN_VERSION = 'v9.9';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -2315,6 +2315,8 @@ tr:last-child td { border: none; }
         <div class="group-content">
       <div class="card">
         <div class="card-title"><span data-i18n="card_sueldo">Sueldo del mes</span></div>
+        <button class="btn" onclick="toggleAgregarMes()" id="btn-agregar-mes" style="width:100%;margin-bottom:10px;font-size:13px;padding:10px;border-style:dashed;color:var(--text2)"><span data-i18n="btn_agregar_mes">+ Agregar mes</span></button>
+        <div id="agregar-mes-panel" style="display:none;margin-bottom:10px"></div>
         <div class="field"><label data-i18n="lbl_mes">Mes</label><select id="s-mes" onchange="renderQuick()"></select></div>
         <div class="row2">
           <div class="field"><label data-i18n="lbl_sueldo_campo">Sueldo ($)</label><input type="number" id="s-sueldo" placeholder="0" inputmode="decimal"></div>
@@ -2842,8 +2844,6 @@ tr:last-child td { border: none; }
       <div class="card">
         <div class="card-title"><span data-i18n="card_meses">Meses activos</span></div>
         <div id="meses-list"></div>
-        <button class="btn" onclick="toggleAgregarMes()" id="btn-agregar-mes" style="width:100%;margin-top:10px;font-size:13px;padding:10px;border-style:dashed;color:var(--text2)"><span data-i18n="btn_agregar_mes">+ Agregar mes</span></button>
-        <div id="agregar-mes-panel" style="display:none;margin-top:10px"></div>
       </div>
 
       <div class="card">
@@ -2983,7 +2983,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.8</div>
+    <div class="drawer-header-version">v9.9</div>
   </div>
 
   <div class="drawer-body">
@@ -4468,6 +4468,8 @@ function agregarMes() {
   save();
   refreshAll();
   renderAjustes();
+  const sMes = document.getElementById('s-mes');
+  if(sMes) { sMes.value = nombre; renderQuick(); }
   toast(`${nombre} ${t('toast_mes_agregado')}`);
 }
 
