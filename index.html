@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.9';
+const MARTIFIN_VERSION = 'v9.10';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -393,6 +393,21 @@ const LANG = {
     btn_json_sub: 'Para guardar y restaurar después',
     toast_export_ok: 'Backup descargado ✓',
     toast_export_fail: 'No se pudo descargar. Intentalo de nuevo',
+    btn_restaurar: 'Restaurar desde backup',
+    btn_restaurar_sub: 'Reemplaza tus datos actuales por los del archivo',
+    toast_restore_invalido: 'Ese archivo no es un backup válido de Martifin',
+    toast_restore_ok: 'Backup restaurado ✓',
+    restore_title: 'Restaurar backup',
+    restore_desc: 'Revisá qué vas a ganar y qué vas a perder antes de confirmar.',
+    restore_backup_label: 'El backup',
+    restore_actual_label: 'Tus datos actuales',
+    restore_exportado: 'Exportado el',
+    restore_perdida_aviso: 'Estos meses no están en el backup y se van a perder',
+    restore_version_nueva_aviso: 'Este backup es de una versión más nueva de la app. Puede que algunos datos no se lean bien.',
+    btn_restaurar_confirmar: 'Restaurar',
+    confirm_restaurar_backup: '¿Restaurar este backup? Vas a reemplazar todos tus datos actuales por los del archivo. Antes de aplicar el cambio te vamos a pedir que confirmes que descargaste la copia de seguridad.',
+    confirm_restore_seguridad_pre: 'Se descargó tu copia de seguridad como',
+    confirm_restore_seguridad_post: '(revisá tu carpeta de Descargas). Confirmá solo si la ves ahí — recién ahí se reemplazan tus datos actuales. Cancelar no cambia nada.',
     lbl_datos_desc: 'Tus gastos y sueldos se guardan en este dispositivo. Si querés empezar de cero podés borrar todos los datos cargados.',
     btn_borrar_datos: 'Borrar gastos y sueldos cargados',
     btn_ver_bienvenida: 'Ver pantalla de bienvenida',
@@ -855,6 +870,21 @@ const LANG = {
     btn_json_sub: 'To save and restore later',
     toast_export_ok: 'Backup downloaded ✓',
     toast_export_fail: 'Could not download. Try again',
+    btn_restaurar: 'Restore from backup',
+    btn_restaurar_sub: "Replaces your current data with the file's",
+    toast_restore_invalido: 'That file is not a valid Martifin backup',
+    toast_restore_ok: 'Backup restored ✓',
+    restore_title: 'Restore backup',
+    restore_desc: "Check what you'll gain and lose before confirming.",
+    restore_backup_label: 'The backup',
+    restore_actual_label: 'Your current data',
+    restore_exportado: 'Exported on',
+    restore_perdida_aviso: 'These months are not in the backup and will be lost',
+    restore_version_nueva_aviso: 'This backup is from a newer app version. Some data may not load correctly.',
+    btn_restaurar_confirmar: 'Restore',
+    confirm_restaurar_backup: "Restore this backup? You'll replace all your current data with the file's. Before applying the change we'll ask you to confirm you downloaded the safety copy.",
+    confirm_restore_seguridad_pre: 'Your safety backup was downloaded as',
+    confirm_restore_seguridad_post: '(check your Downloads folder). Only confirm if you see it there — your current data gets replaced right after. Cancel changes nothing.',
     lbl_datos_desc: 'Your expenses and income are saved on this device. You can reset all loaded data here.',
     btn_borrar_datos: 'Delete expenses and income',
     btn_ver_bienvenida: 'View welcome screen',
@@ -1298,6 +1328,21 @@ const LANG = {
     btn_json_sub: 'Para salvar e restaurar depois',
     toast_export_ok: 'Backup baixado ✓',
     toast_export_fail: 'Não foi possível baixar. Tente novamente',
+    btn_restaurar: 'Restaurar de um backup',
+    btn_restaurar_sub: 'Substitui seus dados atuais pelos do arquivo',
+    toast_restore_invalido: 'Esse arquivo não é um backup válido do Martifin',
+    toast_restore_ok: 'Backup restaurado ✓',
+    restore_title: 'Restaurar backup',
+    restore_desc: 'Veja o que você vai ganhar e perder antes de confirmar.',
+    restore_backup_label: 'O backup',
+    restore_actual_label: 'Seus dados atuais',
+    restore_exportado: 'Exportado em',
+    restore_perdida_aviso: 'Esses meses não estão no backup e vão se perder',
+    restore_version_nueva_aviso: 'Esse backup é de uma versão mais nova do app. Alguns dados podem não carregar corretamente.',
+    btn_restaurar_confirmar: 'Restaurar',
+    confirm_restaurar_backup: 'Restaurar esse backup? Você vai substituir todos os seus dados atuais pelos do arquivo. Antes de aplicar a mudança vamos pedir que confirme que baixou a cópia de segurança.',
+    confirm_restore_seguridad_pre: 'Sua cópia de segurança foi baixada como',
+    confirm_restore_seguridad_post: '(confira sua pasta de Downloads). Confirme só se estiver lá — seus dados atuais serão substituídos logo em seguida. Cancelar não muda nada.',
     lbl_datos_desc: 'Seus gastos e renda são salvos neste dispositivo. Você pode redefinir todos os dados aqui.',
     btn_borrar_datos: 'Excluir gastos e renda',
     btn_ver_bienvenida: 'Ver tela de boas-vindas',
@@ -2936,6 +2981,11 @@ tr:last-child td { border: none; }
           <span style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">💾</span><span data-i18n="btn_json">Descargar backup completo</span></span>
           <span style="font-size:11px;color:var(--text3);font-weight:400;padding-left:24px" data-i18n="btn_json_sub">Para guardar y restaurar después</span>
         </button>
+        <button class="btn" id="btn-restaurar-backup" style="width:100%;background:var(--bg3);color:var(--text);border:0.5px solid var(--border2);font-size:14px;padding:12px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-top:10px" onclick="document.getElementById('restore-file-input').click()" disabled>
+          <span style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">📥</span><span data-i18n="btn_restaurar">Restaurar desde backup</span></span>
+          <span style="font-size:11px;color:var(--text3);font-weight:400;padding-left:24px" data-i18n="btn_restaurar_sub">Reemplaza tus datos actuales por los del archivo</span>
+        </button>
+        <input type="file" id="restore-file-input" accept="application/json,.json" style="display:none" onchange="onRestoreFileSelected(event)">
       </div>
 
       <div class="card">
@@ -2983,7 +3033,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.9</div>
+    <div class="drawer-header-version">v9.10</div>
   </div>
 
   <div class="drawer-body">
@@ -3017,7 +3067,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.9</div>
+    <div class="drawer-footer-version">Martifin v9.10</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -4517,6 +4567,7 @@ renderCatBars();
 renderChart();
 renderAcumulado();
 setTimeout(cloudLoad, 800);
+initRestoreButtonGate();
 initTheme();
 currentLang = localStorage.getItem('martifin_lang') || 'es';
 applyLang();  // aplica traducciones guardadas al cargar
@@ -6067,10 +6118,12 @@ function descargarExcel() {
   }
 }
 
+const BACKUP_VERSION = 1; // debe coincidir con "version" en el payload de abajo
+
 function descargarBackupJSON() {
   try {
     const payload = {
-      version: 1,
+      version: BACKUP_VERSION,
       app: 'Martifin',
       exportedAt: new Date().toISOString(),
       data: { ...DATA, months: MONTHS }
@@ -6082,6 +6135,147 @@ function descargarBackupJSON() {
     console.error('descargarBackupJSON error:', e);
     toast(t('toast_export_fail') || 'No se pudo descargar. Intentalo de nuevo');
   }
+}
+
+/* ── RESTAURAR DESDE BACKUP ────────────────────────────────────────────────
+ * Flujo: elegir archivo → validar estructura → mostrar resumen comparativo
+ * (backup vs. datos actuales, con meses que se ganan/pierden) → confirmación
+ * destructiva → descargar backup de seguridad del estado actual → gate de
+ * confirmación humana de esa descarga (no hay forma de detectar por JS si
+ * una descarga se completó o fue bloqueada por el navegador) → recién ahí
+ * se reemplaza DATA, corriendo las mismas migraciones idempotentes que
+ * corren al arrancar la app (ver applyCloudData).
+ * ─────────────────────────────────────────────────────────────────────── */
+let _pendingRestoreData = null;
+
+function initRestoreButtonGate() {
+  const btn = document.getElementById('btn-restaurar-backup');
+  if(!btn) return;
+  if(_cloudLoaded) { btn.disabled = false; return; }
+  const iv = setInterval(() => {
+    if(_cloudLoaded) { btn.disabled = false; clearInterval(iv); }
+  }, 300);
+}
+
+function validarBackup(p) {
+  if(!p || typeof p !== 'object') return false;
+  if(p.app !== 'Martifin') return false;
+  if(p.version === undefined || p.version === null) return false;
+  const d = p.data;
+  if(!d || typeof d !== 'object') return false;
+  if(!Array.isArray(d.gastos)) return false;
+  if(!d.sueldos || typeof d.sueldos !== 'object') return false;
+  if(!Array.isArray(d.months)) return false;
+  return true;
+}
+
+async function onRestoreFileSelected(evt) {
+  const file = evt.target.files[0];
+  evt.target.value = ''; // permite re-seleccionar el mismo archivo en un próximo intento
+  if(!file) return;
+  let parsed;
+  try {
+    const text = await file.text();
+    parsed = JSON.parse(text);
+  } catch(e) {
+    toast(t('toast_restore_invalido'));
+    return;
+  }
+  if(!validarBackup(parsed)) {
+    toast(t('toast_restore_invalido'));
+    return;
+  }
+  mostrarResumenRestore(parsed);
+}
+
+function mostrarResumenRestore(backup) {
+  _pendingRestoreData = backup;
+  const d = backup.data;
+  const backupMeses = d.months;
+  const actualMeses = MONTHS;
+  const perdidos = actualMeses.filter(m => !backupMeses.includes(m));
+  const ganados = backupMeses.filter(m => !actualMeses.includes(m));
+
+  const pill = (m, tipo) => {
+    const styles = {
+      perdido: 'color:var(--red);border-color:var(--red)',
+      ganado: 'color:#1DBA87;border-color:#1DBA87',
+      neutral: 'color:var(--text2);border-color:var(--border2)'
+    };
+    return `<span style="font-size:11px;padding:3px 8px;border-radius:20px;border:0.5px solid;${styles[tipo]}">${esc(getMonthDisplay(m))}</span>`;
+  };
+
+  const fechaEl = document.getElementById('restore-backup-fecha');
+  const fecha = backup.exportedAt ? new Date(backup.exportedAt) : null;
+  fechaEl.textContent = (fecha && !isNaN(fecha))
+    ? `${t('restore_exportado')} ${fecha.toLocaleDateString('es-UY', {day:'2-digit',month:'long',year:'numeric'})}`
+    : '';
+
+  document.getElementById('restore-backup-gastos').textContent = `${d.gastos.length} ${t('kpi_gastos').toLowerCase()}`;
+  document.getElementById('restore-backup-meses').innerHTML =
+    backupMeses.map(m => pill(m, ganados.includes(m) ? 'ganado' : 'neutral')).join('');
+
+  document.getElementById('restore-actual-gastos').textContent = `${DATA.gastos.length} ${t('kpi_gastos').toLowerCase()}`;
+  document.getElementById('restore-actual-meses').innerHTML =
+    actualMeses.map(m => pill(m, perdidos.includes(m) ? 'perdido' : 'neutral')).join('');
+
+  const avisoEl = document.getElementById('restore-perdida-aviso');
+  if(perdidos.length) {
+    avisoEl.style.display = 'block';
+    avisoEl.innerHTML = `⚠ ${t('restore_perdida_aviso')}: ${perdidos.map(m => esc(getMonthDisplay(m))).join(', ')}`;
+  } else {
+    avisoEl.style.display = 'none';
+    avisoEl.innerHTML = '';
+  }
+
+  const verEl = document.getElementById('restore-warning-version');
+  const backupVersionNum = Number(backup.version);
+  if(!isNaN(backupVersionNum) && backupVersionNum > BACKUP_VERSION) {
+    verEl.style.display = 'block';
+    verEl.textContent = t('restore_version_nueva_aviso');
+  } else {
+    verEl.style.display = 'none';
+    verEl.textContent = '';
+  }
+
+  document.getElementById('restore-summary-modal').style.display = 'flex';
+}
+
+function cerrarResumenRestore() {
+  document.getElementById('restore-summary-modal').style.display = 'none';
+  _pendingRestoreData = null;
+}
+
+function confirmarRestaurarBackup() {
+  if(!_pendingRestoreData) return;
+  document.getElementById('restore-summary-modal').style.display = 'none';
+  showConfirm(t('confirm_restaurar_backup'), function() {
+    dispararBackupSeguridadYConfirmar();
+  });
+}
+
+// Descarga la red de seguridad y, como _triggerDownload() no puede detectar
+// si el navegador bloqueó o completó la descarga, pide confirmación humana
+// explícita (con el nombre de archivo exacto) antes de tocar DATA.
+function dispararBackupSeguridadYConfirmar() {
+  if(!_pendingRestoreData) return;
+  const filename = 'martifin-backup-' + _todayStr() + '.json';
+  descargarBackupJSON();
+  const msg = `${t('confirm_restore_seguridad_pre')} ${filename}. ${t('confirm_restore_seguridad_post')}`;
+  showConfirm(msg, function() {
+    ejecutarRestaurarBackup();
+  });
+}
+
+function ejecutarRestaurarBackup() {
+  if(!_pendingRestoreData) return;
+  applyCloudData(_pendingRestoreData.data);
+  save();
+  refreshAll();
+  renderInversiones();
+  renderAjustes();
+  _pendingRestoreData = null;
+  toast(t('toast_restore_ok'));
 }
 
 async function exportarPDF() {
@@ -7421,6 +7615,36 @@ document.addEventListener('DOMContentLoaded', syncSwipeToggleUI);
     <button id="mig-btn-local" style="width:100%;padding:13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-size:14px;font-weight:500;cursor:pointer;margin-bottom:8px;text-align:left;padding-left:16px"><span data-i18n="mig_btn_local">Quedarme con los de este dispositivo</span></button>
     <button id="mig-btn-cloud" style="width:100%;padding:13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-size:14px;font-weight:500;cursor:pointer;margin-bottom:8px;text-align:left;padding-left:16px"><span data-i18n="mig_btn_cloud">Quedarme con los de la nube</span></button>
     <button id="mig-btn-cancel" style="width:100%;padding:13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-size:14px;font-weight:500;cursor:pointer;text-align:left;padding-left:16px"><span data-i18n="mig_btn_cancel">Cancelar y cerrar sesión</span></button>
+  </div>
+</div>
+
+<!-- ── MODAL RESUMEN RESTAURAR BACKUP ─────────────────────────────────── -->
+<div id="restore-summary-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:750;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);padding:24px;width:100%;max-width:380px;max-height:85vh;overflow-y:auto">
+    <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px"><span data-i18n="restore_title">Restaurar backup</span></div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:14px"><span data-i18n="restore_desc">Revisá qué vas a ganar y qué vas a perder antes de confirmar.</span></div>
+
+    <div id="restore-warning-version" style="display:none;background:var(--amber-dim);border:0.5px solid var(--amber);border-radius:var(--r-sm);padding:10px 12px;font-size:12px;color:var(--amber);margin-bottom:12px"></div>
+
+    <div style="background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px"><span data-i18n="restore_backup_label">El backup</span></div>
+      <div id="restore-backup-fecha" style="font-size:11px;color:var(--text3);margin-bottom:6px"></div>
+      <div id="restore-backup-gastos" style="font-size:13px;color:var(--text);margin-bottom:8px"></div>
+      <div id="restore-backup-meses" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+    </div>
+
+    <div style="background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);padding:12px;margin-bottom:16px">
+      <div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px"><span data-i18n="restore_actual_label">Tus datos actuales</span></div>
+      <div id="restore-actual-gastos" style="font-size:13px;color:var(--text);margin-bottom:8px"></div>
+      <div id="restore-actual-meses" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+    </div>
+
+    <div id="restore-perdida-aviso" style="display:none;font-size:12px;color:var(--red);line-height:1.5;margin-bottom:16px"></div>
+
+    <div style="display:flex;gap:10px">
+      <button onclick="cerrarResumenRestore()" style="flex:1;padding:13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:14px;font-weight:500;cursor:pointer" data-i18n="lbl_cancelar">Cancelar</button>
+      <button onclick="confirmarRestaurarBackup()" style="flex:1;padding:13px;background:var(--red);border:none;border-radius:var(--r-sm);color:#fff;font-size:14px;font-weight:600;cursor:pointer" data-i18n="btn_restaurar_confirmar">Restaurar</button>
+    </div>
   </div>
 </div>
 
