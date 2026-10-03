@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.18';
+const MARTIFIN_VERSION = 'v9.19';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -3086,7 +3086,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.18</div>
+    <div class="drawer-header-version">v9.19</div>
   </div>
 
   <div class="drawer-body">
@@ -3120,7 +3120,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.18</div>
+    <div class="drawer-footer-version">Martifin v9.19</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -5577,11 +5577,22 @@ async function cloudSave(payload) {
   if(!navigator.onLine) { safeSet('fpro_v3_pending', payload); return; }
   showSync('syncing');
   const token = await getAuthToken();
+  // La copia pendiente (guardada sin internet) se borra recién cuando esta
+  // subida confirma que salió bien, y solo si nadie guardó otra copia pendiente
+  // mientras tanto. Este payload es siempre igual o más nuevo que la copia que
+  // había al enviarlo (es la copia misma, o DATA completo de un save posterior).
+  const pendienteAlEnviar = localStorage.getItem('fpro_v3_pending');
   fetch(SB_URL + '/rest/v1/sync_data?id=eq.' + encodeURIComponent(USER_ID), {
     method: 'POST',
     headers: {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+token,'Prefer':'resolution=merge-duplicates,return=minimal'},
     body: JSON.stringify({id: USER_ID, data: JSON.parse(payload), updated_at: new Date().toISOString()})
-  }).then(r => r.ok ? showSync('ok') : showSync('error')).catch(() => showSync('error'));
+  }).then(r => {
+    if(!r.ok) { showSync('error'); return; }
+    if(pendienteAlEnviar !== null && localStorage.getItem('fpro_v3_pending') === pendienteAlEnviar) {
+      localStorage.removeItem('fpro_v3_pending');
+    }
+    showSync('ok');
+  }).catch(() => showSync('error'));
 }
 
 async function cloudLoad() {
@@ -5600,6 +5611,11 @@ async function cloudLoad() {
     clearTimeout(_syncTimer);
     applyCloudData(data);
     safeSet('fpro_v3', JSON.stringify(data));
+    // Lo local acaba de ser reemplazado por la nube: una copia pendiente vieja
+    // ya no corresponde a lo que se ve, y si se subiera más tarde (al volver
+    // internet) pisaría datos más nuevos de la nube, p.ej. de otro dispositivo.
+    // (Combinar en vez de reemplazar queda para la sesión de sincronización.)
+    localStorage.removeItem('fpro_v3_pending');
     // La nube reemplaza MONTHS: volver a asegurar el mes actual (sin guardar)
     asegurarMesActual();
     selMes = mesActualKey();
@@ -7184,7 +7200,8 @@ function skipTutorial(){const p=document.getElementById('tutorial-overlay');if(p
 /* ── SYNC MEJORADO — offline + reconexión ────────────────────────────────── */
 window.addEventListener('online', () => {
   const pending = localStorage.getItem('fpro_v3_pending');
-  if(pending) { localStorage.removeItem('fpro_v3_pending'); cloudSave(pending); }
+  // No se borra acá: cloudSave la borra solo si la subida sale bien.
+  if(pending) cloudSave(pending);
 });
 window.addEventListener('offline', () => {
   const dot = document.getElementById('sync-dot');
