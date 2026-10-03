@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.12';
+const MARTIFIN_VERSION = 'v9.13';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -3057,7 +3057,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.12</div>
+    <div class="drawer-header-version">v9.13</div>
   </div>
 
   <div class="drawer-body">
@@ -3091,7 +3091,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.12</div>
+    <div class="drawer-footer-version">Martifin v9.13</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -3546,13 +3546,13 @@ function renderResumenRapido() {
   const panel = document.getElementById('resumen-rapido');
   if (!panel) return;
   const hoy = new Date();
-  const hoyStr = hoy.toISOString().slice(0,10);
+  const hoyStr = _todayStr(hoy);
   const ayer = new Date(hoy); ayer.setDate(ayer.getDate() - 1);
-  const ayerStr = ayer.toISOString().slice(0,10);
+  const ayerStr = _todayStr(ayer);
   const inicioSemana = new Date(hoy);
   const diaSem = hoy.getDay() === 0 ? 6 : hoy.getDay() - 1;
   inicioSemana.setDate(inicioSemana.getDate() - diaSem);
-  const inicioStr = inicioSemana.toISOString().slice(0,10);
+  const inicioStr = _todayStr(inicioSemana);
 
   let gastoHoy = 0, gastoAyer = 0, gastoSemana = 0;
   DATA.gastos.forEach(g => {
@@ -3834,7 +3834,7 @@ function guardarInversion() {
   const mm = resolverMonedaForm('inv', montoRedondeado);
   if(!mm.valid) { toast(t('toast_cambio_requerido')); return; }
   if(!DATA.inversiones) DATA.inversiones = [];
-  DATA.inversiones.push({id: Date.now() + Math.floor(Math.random()*1000), mes, monto:montoRedondeado, tipo, fecha:new Date().toISOString().slice(0,10), moneda:mm.moneda, cambio:mm.cambio, monto_uyu:mm.monto_uyu});
+  DATA.inversiones.push({id: Date.now() + Math.floor(Math.random()*1000), mes, monto:montoRedondeado, tipo, fecha:_todayStr(), moneda:mm.moneda, cambio:mm.cambio, monto_uyu:mm.monto_uyu});
   save();
   document.getElementById('s-inversion').value = '';
   resetMonedaForm('inv');
@@ -4061,8 +4061,7 @@ function populateSelects() {
   const hcat = document.getElementById('h-cat'); if(hcat) hcat.innerHTML = `<option value="">${t('lbl_todas')}</option>` + catOpts;
   document.getElementById('h-mes').innerHTML = [`<option value="">${t('lbl_todos_meses')}</option>`,
     ...MONTHS.map(m=>`<option value="${m}">${getMonthDisplay(m)}</option>`)].join('');
-  const today = new Date();
-  const todayStr=today.toISOString().split('T')[0];
+  const todayStr=_todayStr();
   document.getElementById('f-fecha').value=todayStr;
   const gaf=document.getElementById('ga-fecha');if(gaf)gaf.value=todayStr;
   document.getElementById('s-mes').addEventListener('change', renderQuick);
@@ -4930,7 +4929,7 @@ function toggleHistCompacto() {
 async function duplicarGasto(id) {
   const g = DATA.gastos.find(x => x.id === id);
   if (!g) return;
-  const hoy = new Date().toISOString().slice(0,10);
+  const hoy = _todayStr();
   const mesActual = selMes || g.mes;
 
   // El duplicado queda fechado hoy: si el original es USD, se resuelve el
@@ -5977,8 +5976,9 @@ async function checkTrialBanner() {
 
 /* ── EXPORTAR PDF ────────────────────────────────────────────────────────── */
 /* ── BACKUP Y EXPORTACIÓN ─────────────────────────────────────────────────── */
-function _todayStr() {
-  const d = new Date();
+// Fecha YYYY-MM-DD en la hora del celular (no UTC: con toISOString(), en
+// Uruguay después de las 21 h "hoy" pasaba a ser mañana).
+function _todayStr(d = new Date()) {
   const mm = String(d.getMonth()+1).padStart(2,'0');
   const dd = String(d.getDate()).padStart(2,'0');
   return d.getFullYear() + '-' + mm + '-' + dd;
@@ -7464,7 +7464,7 @@ function abrirGastoRapido() {
                       'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const mesActual = monthNames[now.getMonth()] + ' ' + now.getFullYear();
   const mesParaUsar = MONTHS.includes(mesActual) ? mesActual : MONTHS[MONTHS.length - 1];
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = _todayStr(now);
 
   const qfCat = document.getElementById('qf-cat');
   const qfAllCats = getAllCats();
@@ -7785,7 +7785,7 @@ function hideConfirm() {
 let _cambioManualCallback = null;
 
 async function fetchCambioUSDHoy() {
-  const hoy = new Date().toISOString().slice(0,10);
+  const hoy = _todayStr();
   const cacheKey = 'martifin_cambio_bcu_' + hoy;
   const cached = localStorage.getItem(cacheKey);
   if(cached && !isNaN(parseFloat(cached))) return parseFloat(cached);
@@ -7810,7 +7810,7 @@ async function fetchCambioUSDHoy() {
 // o null si no se pudo resolver automáticamente (fecha pasada, o fetch/caché
 // de hoy fallaron) — el caller debe pedir input manual en ese caso.
 async function obtenerCambioUSD(fechaGasto) {
-  const hoy = new Date().toISOString().slice(0,10);
+  const hoy = _todayStr();
   if(fechaGasto !== hoy) return null;
   return await fetchCambioUSDHoy();
 }
@@ -7870,7 +7870,7 @@ function onMonedaChange(prefix) {
   const info = document.getElementById(prefix + '-cambio-info');
   if(!sel || sel.value !== 'USD') { if(info) info.style.display = 'none'; return; }
   const fechaInput = document.getElementById(prefix + '-fecha');
-  const fecha = (fechaInput && fechaInput.value) || new Date().toISOString().slice(0,10);
+  const fecha = (fechaInput && fechaInput.value) || _todayStr();
   resolverCambioForm(prefix, fecha);
 }
 
