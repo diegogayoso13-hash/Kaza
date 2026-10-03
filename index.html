@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.13';
+const MARTIFIN_VERSION = 'v9.14';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -477,6 +477,7 @@ const LANG = {
     toast_gasto_ok: 'Gasto guardado ✓',
     toast_gasto_upd: 'Gasto actualizado ✓',
     toast_gasto_del: 'Gasto eliminado',
+    btn_deshacer: 'Deshacer',
     toast_sueldo_ok: 'Sueldo guardado ✓',
     toast_inv_ok: 'Inversión guardada ✓',
     toast_retiro_ok: 'Retiro registrado ✓',
@@ -954,6 +955,7 @@ const LANG = {
     toast_gasto_ok: 'Expense saved ✓',
     toast_gasto_upd: 'Expense updated ✓',
     toast_gasto_del: 'Expense deleted',
+    btn_deshacer: 'Undo',
     toast_sueldo_ok: 'Income saved ✓',
     toast_inv_ok: 'Investment saved ✓',
     toast_retiro_ok: 'Withdrawal recorded ✓',
@@ -1420,6 +1422,7 @@ const LANG = {
     toast_gasto_ok: 'Gasto salvo ✓',
     toast_gasto_upd: 'Gasto atualizado ✓',
     toast_gasto_del: 'Gasto excluído',
+    btn_deshacer: 'Desfazer',
     toast_sueldo_ok: 'Renda salva ✓',
     toast_inv_ok: 'Investimento salvo ✓',
     toast_retiro_ok: 'Retirada registrada ✓',
@@ -1813,6 +1816,12 @@ tr:last-child td { border: none; }
 /* TOAST */
 #toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%) translateY(-10px); background: var(--bg4); color: var(--text); border: 0.5px solid var(--border2); border-radius: 20px; padding: 8px 20px; font-size: 13px; opacity: 0; transition: all .3s; z-index: 1200; white-space: nowrap; pointer-events: none; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* AVISO CON DESHACER — abajo, a la altura del pulgar, al costado del + */
+#undo-bar { position: fixed; left: 16px; right: 84px; bottom: calc(74px + var(--safe-bottom)); display: flex; align-items: center; gap: 10px; background: var(--bg4); color: var(--text); border: 0.5px solid var(--border2); border-radius: var(--r); padding: 5px 5px 5px 16px; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); z-index: 150; opacity: 0; visibility: hidden; transform: translateY(10px); transition: opacity .2s, transform .2s, visibility .2s; }
+#undo-bar.show { opacity: 1; visibility: visible; transform: translateY(0); }
+#undo-msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#undo-btn { flex-shrink: 0; min-height: 44px; padding: 0 16px; background: var(--teal); color: #000; border: none; border-radius: var(--r-sm); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; }
 
 /* STATUS PILLS */
 .pill { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; }
@@ -3057,7 +3066,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.13</div>
+    <div class="drawer-header-version">v9.14</div>
   </div>
 
   <div class="drawer-body">
@@ -3091,12 +3100,13 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.13</div>
+    <div class="drawer-footer-version">Martifin v9.14</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
 
 <div id="toast"></div>
+<div id="undo-bar" role="status" aria-live="polite"><span id="undo-msg"></span><button id="undo-btn" type="button"></button></div>
 
 <script>
 /* ── ENSURE GLOBALS EXIST (safety net) ──────────────────────────────────── */
@@ -3391,6 +3401,28 @@ function toast(msg) {
   setTimeout(() => t.classList.remove('show'), 2000);
 }
 
+/* ── AVISO CON DESHACER ───────────────────────────────────────────────────
+ * Reutilizable para borrados de un toque: mostrarDeshacer(mensaje, alDeshacer).
+ * Va aparte de toast() porque ese no recibe toques y otros mensajes lo pisan.
+ * Un solo aviso a la vez: si aparece otro (o se cambia de pantalla), el
+ * borrado anterior queda definitivo.
+ * ─────────────────────────────────────────────────────────────────────── */
+let _deshacerTimer = null;
+function mostrarDeshacer(msg, alDeshacer) {
+  document.getElementById('undo-msg').textContent = msg;
+  const btn = document.getElementById('undo-btn');
+  btn.textContent = t('btn_deshacer');
+  btn.onclick = () => { ocultarDeshacer(); alDeshacer(); };
+  document.getElementById('undo-bar').classList.add('show');
+  clearTimeout(_deshacerTimer);
+  _deshacerTimer = setTimeout(ocultarDeshacer, 5000);
+}
+function ocultarDeshacer() {
+  clearTimeout(_deshacerTimer);
+  document.getElementById('undo-bar').classList.remove('show');
+  document.getElementById('undo-btn').onclick = null;
+}
+
 function getMesData(mes) {
   const h = HIST[mes] || {};
   const u = DATA.sueldos[mes] || {};
@@ -3459,6 +3491,7 @@ async function navTo(pg, btn, direction) {
   if (navigator.vibrate) navigator.vibrate(10);
 
   // ── HIDE ALL PAGES ──
+  ocultarDeshacer();
   document.querySelectorAll('.page').forEach(p => {
     p.classList.remove('active','slide-left','slide-right');
     p.style.display = 'none';
@@ -4218,8 +4251,18 @@ function renderExtras(mes) {
 
 
 function borrarGasto(id) {
-  DATA.gastos = DATA.gastos.filter(g => g.id !== id);
-  save(); renderHistorial(); toast(t('toast_gasto_del'));
+  const idx = DATA.gastos.findIndex(g => g.id === id);
+  if(idx === -1) return;
+  const [borrado] = DATA.gastos.splice(idx, 1);
+  save(); renderHistorial();
+  // Deshacer lo devuelve tal cual (mismo id, moneda, cambio) y en su lugar.
+  // La nube recibe siempre la última versión completa de DATA, así que da
+  // igual si el borrado ya se había subido.
+  mostrarDeshacer(t('toast_gasto_del'), () => {
+    if(DATA.gastos.some(g => g.id === borrado.id)) return;
+    DATA.gastos.splice(Math.min(idx, DATA.gastos.length), 0, borrado);
+    save(); renderHistorial();
+  });
 }
 
 /* ── CALCULADORA HORAS DE VIDA ────────────────────────────────────────────
