@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.14';
+const MARTIFIN_VERSION = 'v9.15';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -429,6 +429,7 @@ const LANG = {
     lbl_editar_inv: 'Editar aporte de inversión',
     btn_editar: 'Editar',
     btn_borrar: 'Borrar',
+    lbl_cambio_corto: 'cambio',
     conf_borrar_inv: '¿Borrar este aporte de inversión?',
     prompt_nuevo_monto: 'Nuevo monto:',
     toast_monto_invalido: 'Monto inválido',
@@ -915,6 +916,7 @@ const LANG = {
     lbl_editar_inv: 'Edit investment contribution',
     btn_editar: 'Edit',
     btn_borrar: 'Delete',
+    lbl_cambio_corto: 'rate',
     conf_borrar_inv: 'Delete this investment contribution?',
     prompt_nuevo_monto: 'New amount:',
     toast_monto_invalido: 'Invalid amount',
@@ -1382,6 +1384,7 @@ const LANG = {
     lbl_editar_inv: 'Editar aporte de investimento',
     btn_editar: 'Editar',
     btn_borrar: 'Excluir',
+    lbl_cambio_corto: 'câmbio',
     conf_borrar_inv: 'Excluir este aporte de investimento?',
     prompt_nuevo_monto: 'Novo valor:',
     toast_monto_invalido: 'Valor inválido',
@@ -1683,7 +1686,7 @@ html, body { height: 100%; position: relative; background: var(--bg); font-size:
 /* LAYOUT */
 #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
 #header { padding: 52px 20px 16px; background: var(--bg); border-bottom: 0.5px solid var(--border); flex-shrink: 0; }
-#content { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding: 16px 16px calc(80px + var(--safe-bottom)); }
+#content { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding: 16px 16px calc(140px + var(--safe-bottom)); } /* 140px: lo último de cada pantalla puede subir por encima del botón + */
 #nav { position: fixed; bottom: 0; left: 0; right: 0; height: calc(58px + var(--safe-bottom)); font-size: 9px !important; padding-bottom: var(--safe-bottom); background: var(--bg2); border-top: 0.5px solid var(--border); display: flex; z-index: 100; }
 .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: none; border: none; color: var(--text3); font-family: 'DM Sans', sans-serif; font-size: 10px; cursor: pointer; transition: color .2s, transform .1s; -webkit-tap-highlight-color: transparent; }
 .nav-btn:active { transform: scale(0.9); }
@@ -1789,7 +1792,18 @@ html, body { height: 100%; position: relative; background: var(--bg); font-size:
 .btn-primary { background: var(--teal); color: #000; }
 .btn-danger-sm { background: none; border: 0.5px solid var(--border2); color: var(--red); border-radius: var(--r-sm); padding: 4px 7px; cursor: pointer; font-size: 10px; font-family: 'DM Sans', sans-serif; min-width: 26px; }
 .btn-edit-sm { background: none; border: 0.5px solid var(--border2); color: var(--blue); border-radius: var(--r-sm); padding: 4px 7px; cursor: pointer; font-size: 11px; font-family: 'DM Sans', sans-serif; min-width: 26px; }
-.hist-actions { display: flex; gap: 3px; justify-content: flex-end; flex-wrap: nowrap; }
+/* HISTORIAL — vista normal, dos renglones por gasto */
+#hist-body .hrow td { padding: 10px 12px; }
+.hrow-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.hrow-desc { font-size: 14px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.hrow-monto { text-align: right; flex-shrink: 0; }
+.hrow-monto-val { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; white-space: nowrap; }
+.hrow-cambio { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.hrow-bottom { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; }
+.hrow-meta { font-size: 12px; color: var(--text2); min-width: 0; }
+.hrow-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.btn-accion { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; background: none; border: 0.5px solid var(--border2); border-radius: var(--r-sm); font-size: 15px; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+.btn-accion.borrar { margin-left: 8px; color: var(--red); }
 
 /* BAR */
 .bar-row { margin-bottom: 12px; }
@@ -3066,7 +3080,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.14</div>
+    <div class="drawer-header-version">v9.15</div>
   </div>
 
   <div class="drawer-body">
@@ -3100,7 +3114,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.14</div>
+    <div class="drawer-footer-version">Martifin v9.15</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -4902,6 +4916,10 @@ function renderHistorial() {
     ? `${items.length} ${t('lbl_historial_sep')} ${fmt(total)}`
     : '';
   const tbody = document.getElementById('hist-body');
+  const compacto = localStorage.getItem('martifin_hist_compacto') === '1';
+  // Los títulos de columna solo tienen sentido en la vista compacta: la
+  // normal muestra cada gasto en dos renglones.
+  tbody.closest('table').tHead.style.display = (compacto && items.length) ? '' : 'none';
 
   // ── EMPTY STATE ──
   if(!items.length) {
@@ -4925,7 +4943,6 @@ function renderHistorial() {
   }
 
   // ── MODO COMPRIMIDO ──
-  const compacto = localStorage.getItem('martifin_hist_compacto') === '1';
   const btnCompacto = document.getElementById('h-toggle-compacto');
   if (btnCompacto) btnCompacto.textContent = compacto ? '☰ Vista normal' : '≡ Vista compacta';
 
@@ -4943,18 +4960,26 @@ function renderHistorial() {
         <button class="btn-danger-sm" style="color:var(--blue);border-color:var(--border2);font-size:11px;padding:3px 6px" onclick="abrirEdicion(${g.id})">✏</button>
       </td></tr>`).join('');
   } else {
-    tbody.innerHTML = items.map(g => `<tr>
-      <td style="color:var(--text2);font-size:12px;white-space:nowrap">${g.fecha.slice(5)}</td>
-      <td><div style="font-size:13px;font-weight:500">${esc(g.desc)}</div>
-        <div style="font-size:11px;color:${getCatColor(g.cat)}">${getCatLabel(g.cat)}${g.subcat?' › '+esc(g.subcat):''}</div></td>
-      <td style="text-align:right;font-weight:500;font-family:'DM Mono',monospace;font-size:13px;white-space:nowrap">${montoDisplay(g)}</td>
-      <td style="padding:4px 0">
-        <div class="hist-actions">
-          <button class="btn-danger-sm" style="color:var(--teal);border-color:var(--border2)" onclick="duplicarGasto(${g.id})" title="Duplicar">⧉</button>
-          <button class="btn-danger-sm" style="color:var(--blue);border-color:var(--border2)" onclick="abrirEdicion(${g.id})">✏</button>
-          <button class="btn-danger-sm" onclick="borrarGasto(${g.id})">✕</button>
+    // Dos renglones por gasto: descripción + monto arriba; fecha, categoría y
+    // botones (40x40, la ✕ separada) abajo. Así el monto en USD no se monta
+    // sobre los botones en pantallas angostas.
+    tbody.innerHTML = items.map(g => `<tr class="hrow"><td colspan="4">
+      <div class="hrow-top">
+        <div class="hrow-desc">${esc(g.desc)}</div>
+        <div class="hrow-monto">
+          <div class="hrow-monto-val">${montoDisplayCompacto(g)}</div>
+          ${g.moneda === 'USD' ? `<div class="hrow-cambio">${t('lbl_cambio_corto')} ${g.cambio}</div>` : ''}
         </div>
-      </td></tr>`).join('');
+      </div>
+      <div class="hrow-bottom">
+        <div class="hrow-meta">${g.fecha.slice(5)} · <span style="color:${getCatColor(g.cat)}">${getCatLabel(g.cat)}${g.subcat?' › '+esc(g.subcat):''}</span></div>
+        <div class="hrow-actions">
+          <button class="btn-accion" style="color:var(--teal)" onclick="duplicarGasto(${g.id})" title="Duplicar" aria-label="Duplicar">⧉</button>
+          <button class="btn-accion" style="color:var(--blue)" onclick="abrirEdicion(${g.id})" title="${t('btn_editar')}" aria-label="${t('btn_editar')}">✏</button>
+          <button class="btn-accion borrar" onclick="borrarGasto(${g.id})" title="${t('btn_borrar')}" aria-label="${t('btn_borrar')}">✕</button>
+        </div>
+      </div>
+    </td></tr>`).join('');
   }
   renderWeeklyChart(mes, items);
 }
