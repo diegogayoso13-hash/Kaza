@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.15';
+const MARTIFIN_VERSION = 'v9.16';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -430,6 +430,8 @@ const LANG = {
     btn_editar: 'Editar',
     btn_borrar: 'Borrar',
     lbl_cambio_corto: 'cambio',
+    btn_duplicar: 'Duplicar',
+    toast_gasto_duplicado: 'Gasto duplicado con fecha de hoy',
     conf_borrar_inv: '¿Borrar este aporte de inversión?',
     prompt_nuevo_monto: 'Nuevo monto:',
     toast_monto_invalido: 'Monto inválido',
@@ -917,6 +919,8 @@ const LANG = {
     btn_editar: 'Edit',
     btn_borrar: 'Delete',
     lbl_cambio_corto: 'rate',
+    btn_duplicar: 'Duplicate',
+    toast_gasto_duplicado: 'Expense duplicated with today\'s date',
     conf_borrar_inv: 'Delete this investment contribution?',
     prompt_nuevo_monto: 'New amount:',
     toast_monto_invalido: 'Invalid amount',
@@ -1385,6 +1389,8 @@ const LANG = {
     btn_editar: 'Editar',
     btn_borrar: 'Excluir',
     lbl_cambio_corto: 'câmbio',
+    btn_duplicar: 'Duplicar',
+    toast_gasto_duplicado: 'Gasto duplicado com a data de hoje',
     conf_borrar_inv: 'Excluir este aporte de investimento?',
     prompt_nuevo_monto: 'Novo valor:',
     toast_monto_invalido: 'Valor inválido',
@@ -3080,7 +3086,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.15</div>
+    <div class="drawer-header-version">v9.16</div>
   </div>
 
   <div class="drawer-body">
@@ -3114,7 +3120,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.15</div>
+    <div class="drawer-footer-version">Martifin v9.16</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -3320,7 +3326,19 @@ function pct(n) { return (Math.round(n*1000)/10).toFixed(1)+'%'; }
 // UYU (igual que siempre), o con el detalle de conversión si es USD.
 function montoDisplay(g) {
   if (g.moneda !== 'USD') return fmt(g.monto);
-  return `USD ${g.monto.toLocaleString('es-UY')} → ${fmt(g.monto_uyu)} @ ${g.cambio}`;
+  return `USD ${g.monto.toLocaleString('es-UY')} → ${fmt(g.monto_uyu)} @ ${fmtCambio(g.cambio)}`;
+}
+// Fecha guardada "YYYY-MM-DD" → "2/10" (día/mes en todos los idiomas: la app
+// es para Uruguay/LatAm y así nunca se lee como mes/día). Solo para mostrar:
+// lo guardado sigue en YYYY-MM-DD, que es lo que ordena el Historial.
+function fmtFechaCorta(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  return m ? `${+m[3]}/${+m[2]}` : (iso || '');
+}
+// Cotización con coma en castellano y portugués, punto en inglés.
+function fmtCambio(n) {
+  if (n == null || isNaN(n)) return '';
+  return Number(n).toLocaleString(currentLang === 'en' ? 'en-US' : 'es-UY', { maximumFractionDigits: 4 });
 }
 function montoDisplayCompacto(g) {
   if (g.moneda !== 'USD') return fmt(g.monto);
@@ -3834,7 +3852,7 @@ function renderInversiones() {
         + ultimasInv.map(i=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border)">
             <div style="flex:1">
               <div style="font-size:13px;font-weight:500">${esc(i.tipo)}</div>
-              <div style="font-size:11px;color:var(--text2)">${esc(i.mes)}${i.fecha?' · '+esc(i.fecha):''}</div>
+              <div style="font-size:11px;color:var(--text2)">${esc(i.mes)}${i.fecha?' · '+esc(fmtFechaCorta(i.fecha)):''}</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <div style="font-family:'DM Mono',monospace;font-size:13px;color:#1DBA87;font-weight:500">${montoDisplay(i)}</div>
@@ -4948,7 +4966,7 @@ function renderHistorial() {
 
   if (compacto) {
     tbody.innerHTML = items.map(g => `<tr style="border-bottom:0.5px solid var(--border)">
-      <td style="padding:6px 4px;font-size:11px;color:var(--text3);white-space:nowrap">${g.fecha.slice(5)}</td>
+      <td style="padding:6px 4px;font-size:11px;color:var(--text3);white-space:nowrap">${fmtFechaCorta(g.fecha)}</td>
       <td style="padding:6px 4px">
         <div style="display:flex;align-items:center;gap:6px;overflow:hidden">
           <span style="width:6px;height:6px;border-radius:50%;background:${getCatColor(g.cat)};flex-shrink:0"></span>
@@ -4968,13 +4986,13 @@ function renderHistorial() {
         <div class="hrow-desc">${esc(g.desc)}</div>
         <div class="hrow-monto">
           <div class="hrow-monto-val">${montoDisplayCompacto(g)}</div>
-          ${g.moneda === 'USD' ? `<div class="hrow-cambio">${t('lbl_cambio_corto')} ${g.cambio}</div>` : ''}
+          ${g.moneda === 'USD' ? `<div class="hrow-cambio">${t('lbl_cambio_corto')} ${fmtCambio(g.cambio)}</div>` : ''}
         </div>
       </div>
       <div class="hrow-bottom">
-        <div class="hrow-meta">${g.fecha.slice(5)} · <span style="color:${getCatColor(g.cat)}">${getCatLabel(g.cat)}${g.subcat?' › '+esc(g.subcat):''}</span></div>
+        <div class="hrow-meta">${fmtFechaCorta(g.fecha)} · <span style="color:${getCatColor(g.cat)}">${getCatLabel(g.cat)}${g.subcat?' › '+esc(g.subcat):''}</span></div>
         <div class="hrow-actions">
-          <button class="btn-accion" style="color:var(--teal)" onclick="duplicarGasto(${g.id})" title="Duplicar" aria-label="Duplicar">⧉</button>
+          <button class="btn-accion" style="color:var(--teal)" onclick="duplicarGasto(${g.id})" title="${t('btn_duplicar')}" aria-label="${t('btn_duplicar')}">⧉</button>
           <button class="btn-accion" style="color:var(--blue)" onclick="abrirEdicion(${g.id})" title="${t('btn_editar')}" aria-label="${t('btn_editar')}">✏</button>
           <button class="btn-accion borrar" onclick="borrarGasto(${g.id})" title="${t('btn_borrar')}" aria-label="${t('btn_borrar')}">✕</button>
         </div>
@@ -5027,7 +5045,7 @@ async function duplicarGasto(id) {
   });
   save();
   if (navigator.vibrate) navigator.vibrate(15);
-  toast('Gasto duplicado con fecha de hoy');
+  toast(t('toast_gasto_duplicado'));
   renderHistorial();
   renderQuick();
 }
