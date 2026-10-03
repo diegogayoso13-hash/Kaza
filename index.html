@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.17';
+const MARTIFIN_VERSION = 'v9.18';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -3086,7 +3086,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.17</div>
+    <div class="drawer-header-version">v9.18</div>
   </div>
 
   <div class="drawer-body">
@@ -3120,7 +3120,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.17</div>
+    <div class="drawer-footer-version">Martifin v9.18</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -5520,7 +5520,9 @@ function verOnboarding() {
 /* ── SUPABASE SYNC ───────────────────────────────────────────────────────── */
 const SB_URL = 'https://zfoetyauhauztkkltjaz.supabase.co';
 const SB_KEY = 'sb_publishable_v46DhQgi48QpamiqYzMfwQ_7wrKKLc0';
-let USER_ID = (localStorage.getItem('martifin_user_id') || 'finko_user').toLowerCase().replace(/[^a-z0-9_]/g,'') || 'finko_user';
+// Se permiten guiones: los IDs de cuenta (UUID de Supabase) los tienen. Sacárselos
+// dejaba en memoria un ID sin fila hasta que checkAuthSession lo corregía.
+let USER_ID = (localStorage.getItem('martifin_user_id') || 'finko_user').toLowerCase().replace(/[^a-z0-9_-]/g,'') || 'finko_user';
 let _dot = null;
 
 
@@ -6581,11 +6583,13 @@ function initAuthStateListener() {
 }
 /* ── MIGRACIÓN ANÓNIMO → CUENTA ──────────────────────────────────────────── */
 
-// Devuelve true para IDs de usuarios sin cuenta: prefijo 'anon_' (skipAuth) o
-// prefijo 'user' sin guiones (obSkip / obFinish). Los UUIDs reales tienen guiones
-// y devuelven false.
+// Devuelve true para IDs de usuarios sin cuenta: prefijo 'anon_' (skipAuth),
+// prefijo 'user' sin guiones (obSkip / obFinish) o 'finko_user' (el valor por
+// defecto cuando el aparato todavía no tiene ID: sin esto se consultaba en la
+// nube una fila compartida). Los UUIDs reales tienen guiones y devuelven false.
 function isAnonId(id) {
   if(!id) return false;
+  if(id === 'finko_user') return true;
   if(id.startsWith('anon_')) return true;
   if(id.startsWith('user') && !id.includes('-')) return true;
   return false;
@@ -6666,7 +6670,8 @@ async function uploadLocalToCloud(snapshot) {
 }
 
 async function deleteOrphanRow(anonId) {
-  if(!isAnonId(anonId)) return;
+  // 'finko_user' es un ID compartido por defecto: nunca es "la fila de este usuario"
+  if(!isAnonId(anonId) || anonId === 'finko_user') return;
   try {
     const token = await getAuthToken();
     await fetch(SB_URL + '/rest/v1/sync_data?id=eq.' + encodeURIComponent(anonId), {
@@ -6915,7 +6920,9 @@ async function registerEmail(email, password) {
       await handlePostRegisterMigration(prevAnonId, prevLocalSnapshot);
       return true;
     }
-    if(prevAnonId && isAnonId(prevAnonId)) {
+    // 'finko_user' = aparato sin datos propios (nunca tocó "Empezar gratis"):
+    // no hay nada que migrar, y así el próximo login pasa por la comparación normal.
+    if(prevAnonId && isAnonId(prevAnonId) && prevAnonId !== 'finko_user') {
       safeSet('martifin_pending_register_anon', prevAnonId);
     }
     toast(t('auth_check_email')); 
