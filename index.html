@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.16';
+const MARTIFIN_VERSION = 'v9.17';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -3086,7 +3086,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.16</div>
+    <div class="drawer-header-version">v9.17</div>
   </div>
 
   <div class="drawer-body">
@@ -3120,7 +3120,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.16</div>
+    <div class="drawer-footer-version">Martifin v9.17</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -4118,6 +4118,8 @@ function populateSelects() {
     const el = document.getElementById(id);
     if(!el) return;
     el.innerHTML = rev.map(m => `<option value="${m}">${getMonthDisplay(m)}</option>`).join('');
+    // Proponer el mes actual (no el último de la lista), igual que el botón +
+    if(MONTHS.includes(mesActualKey())) el.value = mesActualKey();
   });
   // Populate category selects from getAllCats() (originales + custom)
   const catOpts = getAllCats().map(c => `<option value="${c}">${getCatLabel(c)}</option>`).join('');
@@ -4337,10 +4339,7 @@ const HV_FRASES = {
 };
 
 function hvGetMesActual() {
-  const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const now = new Date();
-  const mesActual = monthNames[now.getMonth()] + ' ' + now.getFullYear();
+  const mesActual = mesActualKey();
   return MONTHS.includes(mesActual) ? mesActual : MONTHS[MONTHS.length - 1];
 }
 
@@ -4671,6 +4670,8 @@ function confirmarBorrar() {
 
 /* ── INIT ───────────────────────────────────────────────────────────────── */
 load();
+asegurarMesActual();
+selMes = mesActualKey();
 populateSelects();
 populateSelectsExtra();
 buildMonthScroll();
@@ -5597,6 +5598,9 @@ async function cloudLoad() {
     clearTimeout(_syncTimer);
     applyCloudData(data);
     safeSet('fpro_v3', JSON.stringify(data));
+    // La nube reemplaza MONTHS: volver a asegurar el mes actual (sin guardar)
+    asegurarMesActual();
+    selMes = mesActualKey();
     populateSelects();
     if(typeof populateSelectsExtra==='function') populateSelectsExtra();
     buildMonthScroll();
@@ -5604,11 +5608,6 @@ async function cloudLoad() {
     applyLang();
     setLang(currentLang);
     if(document.getElementById('pg-ajustes')?.classList.contains('active')) renderAjustes();
-    // After cloud load, try to select current month if available
-    const nowN = new Date();
-    const namesN = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-    const currentMes = namesN[nowN.getMonth()] + ' ' + nowN.getFullYear();
-    if(MONTHS.includes(currentMes)) { selMes = currentMes; buildMonthScroll(); renderKPIs(); renderCatBars(); }
     _cloudLoaded = true;
     showSync('ok');
   }).catch(() => { _cloudLoaded = true; showSync('error'); });
@@ -6005,9 +6004,7 @@ function cerrarReminder() {
 function checkRecordatorios() {
   const now = new Date();
   const dia = now.getDate();
-  const mesActual = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-    'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][now.getMonth()]
-    + ' ' + now.getFullYear();
+  const mesActual = mesActualKey();
   const banner = document.getElementById('reminder-banner');
   const text = document.getElementById('reminder-text');
   if(!banner || !text) return;
@@ -6324,6 +6321,40 @@ function mesOrdenCronologico(mes) {
   return p ? p.anio * 12 + p.mesIdx : NaN;
 }
 
+/* ── MES ACTUAL ───────────────────────────────────────────────────────────
+ * Única fuente de "qué mes es hoy". mesActualKey() devuelve la clave tal
+ * como está en MONTHS (reconoce el formato viejo "2026-10", así no se crea
+ * un duplicado) o, si no existe, la clave nueva "Octubre 2026".
+ * asegurarMesActual() la agrega a MONTHS si falta, SIN guardar: queda
+ * guardada con el próximo save() del usuario. Guardar acá subiría a la nube
+ * en cada apertura sin que el usuario haga nada (y abriendo sin internet en
+ * un dispositivo, esa subida pendiente podría pisar lo cargado en otro).
+ * ─────────────────────────────────────────────────────────────────────── */
+function mesActualKey() {
+  const now = new Date();
+  const orden = now.getFullYear() * 12 + now.getMonth();
+  const nombres = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  return MONTHS.find(m => mesOrdenCronologico(m) === orden) || (nombres[now.getMonth()] + ' ' + now.getFullYear());
+}
+function asegurarMesActual() {
+  const key = mesActualKey();
+  if(MONTHS.includes(key)) return false;
+  MONTHS.push(key);
+  MONTHS.sort((a,b) => mesOrdenCronologico(a) - mesOrdenCronologico(b));
+  return true;
+}
+// Si la app quedó abierta de un mes al otro (celular en segundo plano),
+// agrega el mes nuevo y redibuja. Se llama al volver a la app y al abrir el +.
+function revisarCambioDeMes() {
+  if(!asegurarMesActual()) return;
+  selMes = mesActualKey();
+  refreshAll();
+  checkRecordatorios();
+}
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible') revisarCambioDeMes();
+});
+
 // Con pocos meses (≤4) los nombramos todos — es información nueva.
 // Con muchos, los chips ya lo comunican con color: listar 17 nombres es
 // ruido y hace que "perdés 1 mes" y "perdés 17" se lean igual de graves.
@@ -6428,6 +6459,8 @@ function ejecutarRestaurarBackup() {
   if(!_pendingRestoreData) return;
   applyCloudData(_pendingRestoreData.data);
   save();
+  asegurarMesActual();  // después del save: se muestra, pero el backup se guarda tal cual
+  selMes = mesActualKey();
   refreshAll();
   renderInversiones();
   renderAjustes();
@@ -7546,9 +7579,8 @@ function abrirGastoRapido() {
   if (!modal) return;
 
   const now = new Date();
-  const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const mesActual = monthNames[now.getMonth()] + ' ' + now.getFullYear();
+  revisarCambioDeMes();  // por si la app quedó abierta de un mes al otro
+  const mesActual = mesActualKey();
   const mesParaUsar = MONTHS.includes(mesActual) ? mesActual : MONTHS[MONTHS.length - 1];
   const todayStr = _todayStr(now);
 
