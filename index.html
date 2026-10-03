@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.11';
+const MARTIFIN_VERSION = 'v9.12';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -3057,7 +3057,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.11</div>
+    <div class="drawer-header-version">v9.12</div>
   </div>
 
   <div class="drawer-body">
@@ -3091,7 +3091,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.11</div>
+    <div class="drawer-footer-version">Martifin v9.12</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -3591,6 +3591,22 @@ function getCatLabel(cat) {
     'Retiros': t('cat_retiros'),
   };
   return map[cat] || cat;
+}
+// Única función que entiende los dos formatos de clave de mes que existen en
+// MONTHS: "Octubre 2025" (actual, siempre en español — ver getMonthAbbr) y
+// "2025-10" (legacy). Evita reimplementar el parseo en cada sitio que ordena
+// o abrevia meses.
+function parseMes(m) {
+  if(!m || typeof m !== 'string') return null;
+  const esNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  if(m.includes('-')) {
+    const [y, mm] = m.split('-');
+    const anio = parseInt(y, 10), mesIdx = parseInt(mm, 10) - 1;
+    return (isNaN(anio) || isNaN(mesIdx)) ? null : { anio, mesIdx };
+  }
+  const parts = m.split(' ');
+  const mesIdx = esNames.indexOf(parts[0]), anio = parseInt(parts[1], 10);
+  return (mesIdx < 0 || isNaN(anio)) ? null : { anio, mesIdx };
 }
 function getMonthAbbr(m) {
   if(!m) return '';
@@ -4492,9 +4508,9 @@ function renderAjustes() {
   };
   const monthNames = monthNamesMap[currentLang] || monthNamesMap.es;
   function shortMes(m) {
-    const parts = m.split(' ');
-    const idx = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'].indexOf(parts[0]);
-    return (idx>=0?monthNames[idx]:parts[0].substring(0,3)) + " '" + (parts[1]||'').slice(-2);
+    const p = parseMes(m);
+    if(!p) return m;
+    return monthNames[p.mesIdx] + " '" + String(p.anio).slice(-2);
   }
   document.getElementById('meses-list').innerHTML =
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">' +
@@ -4534,10 +4550,8 @@ function agregarMes() {
   const nombre = `${mes} ${anio}`;
   if(MONTHS.includes(nombre)) { toast(t('toast_mes_ya_existe')); return; }
   // Insert in chronological order
-  const order = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const idx = (m) => parseInt(m.split(' ')[1]) * 12 + order.indexOf(m.split(' ')[0]);
   MONTHS.push(nombre);
-  MONTHS.sort((a,b) => idx(a) - idx(b));
+  MONTHS.sort((a,b) => mesOrdenCronologico(a) - mesOrdenCronologico(b));
   selMes = nombre;
   save();
   refreshAll();
@@ -5308,11 +5322,8 @@ function obFinish() {
   if(mes && anio) {
     const nombre = mes + ' ' + anio;
     if(!MONTHS.includes(nombre)) {
-      const order = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
       MONTHS.push(nombre);
-      MONTHS.sort((a,b)=>parseInt(a.split(' ')[1])*12+order.indexOf(a.split(' ')[0]) -
-                         (parseInt(b.split(' ')[1])*12+order.indexOf(b.split(' ')[0])));
+      MONTHS.sort((a,b) => mesOrdenCronologico(a) - mesOrdenCronologico(b));
       selMes = nombre;
       save();
     }
@@ -5974,17 +5985,9 @@ function _todayStr() {
 }
 
 function _mesToISO(mes) {
-  if(!mes || typeof mes !== 'string') return '';
-  const map = {
-    enero:'01', febrero:'02', marzo:'03', abril:'04', mayo:'05', junio:'06',
-    julio:'07', agosto:'08', septiembre:'09', octubre:'10', noviembre:'11', diciembre:'12'
-  };
-  const parts = mes.trim().toLowerCase().split(/\s+/);
-  if(parts.length < 2) return '';
-  const m = map[parts[0]];
-  const y = parts[1];
-  if(!m || !/^\d{4}$/.test(y)) return '';
-  return y + '-' + m;
+  const p = parseMes(mes);
+  if(!p) return '';
+  return String(p.anio) + '-' + String(p.mesIdx + 1).padStart(2, '0');
 }
 
 function _triggerDownload(blob, filename) {
@@ -6231,9 +6234,8 @@ function renderMesesChipsHTML(meses, perdidos, ganados) {
 }
 
 function mesOrdenCronologico(mes) {
-  const order = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const partes = mes.split(' ');
-  return parseInt(partes[1]) * 12 + order.indexOf(partes[0]);
+  const p = parseMes(mes);
+  return p ? p.anio * 12 + p.mesIdx : NaN;
 }
 
 // Con pocos meses (≤4) los nombramos todos — es información nueva.
