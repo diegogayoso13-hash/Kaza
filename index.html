@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.19';
+const MARTIFIN_VERSION = 'v9.20';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -685,6 +685,12 @@ const LANG = {
     tut_t5: 'Definí tus metas', tut_d5: 'Poné un objetivo de ahorro y mirá tu progreso.',
     // Sync
     sync_error: 'Error de sincronización', sync_offline: 'Sin conexión — modo offline',
+    sync_fail_sesion: 'Tu sesión venció y los cambios no se subieron',
+    sync_fail_nube: 'La nube no respondió y los cambios no se subieron',
+    sync_fail_red: 'Conexión inestable: los cambios no se subieron',
+    sync_fail_sub: 'Tus cambios están en este dispositivo. No cierres sesión hasta que se suban.',
+    sync_pendiente_offline: 'Sin internet — tus cambios se suben cuando vuelva la conexión',
+    btn_reintentar: 'Reintentar',
     // Horas de vida
     hv_page_title: 'Calculadora de horas de vida',
     hv_page_desc: 'Basado en "La bolsa o la vida" de Vicki Robin: tu hora real no es tu sueldo por hora. Es tu sueldo neto de gastos de trabajo, dividido por todas las horas que el trabajo te consume — incluyendo viajes, prepararte y descomprimir.',
@@ -1155,6 +1161,12 @@ const LANG = {
     priv_contact: 'Contact: hola@martifin.com', priv_response: 'We respond within 48 hours.',
     btn_ver_tutorial: 'View app tutorial',
     sync_error: 'Sync error', sync_offline: 'No connection — offline mode',
+    sync_fail_sesion: 'Your session expired and your changes weren\'t uploaded',
+    sync_fail_nube: 'The cloud didn\'t respond and your changes weren\'t uploaded',
+    sync_fail_red: 'Unstable connection: your changes weren\'t uploaded',
+    sync_fail_sub: 'Your changes are on this device. Don\'t log out until they\'re uploaded.',
+    sync_pendiente_offline: 'No internet — your changes will upload when the connection is back',
+    btn_reintentar: 'Retry',
     // Life hours
     hv_page_title: 'Life Hours Calculator',
     hv_page_desc: 'Based on "Your Money or Your Life" by Vicki Robin: your real hour isn\'t your hourly wage. It\'s your salary net of work-related expenses, divided by all the hours work actually consumes — including commuting, getting ready and decompressing.',
@@ -1625,6 +1637,12 @@ const LANG = {
     priv_contact: 'Contato: hola@martifin.com', priv_response: 'Respondemos em 48 horas.',
     btn_ver_tutorial: 'Ver tutorial do app',
     sync_error: 'Erro de sincronização', sync_offline: 'Sem conexão — modo offline',
+    sync_fail_sesion: 'Sua sessão expirou e as alterações não foram enviadas',
+    sync_fail_nube: 'A nuvem não respondeu e as alterações não foram enviadas',
+    sync_fail_red: 'Conexão instável: as alterações não foram enviadas',
+    sync_fail_sub: 'Suas alterações estão neste dispositivo. Não saia da conta até que sejam enviadas.',
+    sync_pendiente_offline: 'Sem internet — suas alterações serão enviadas quando a conexão voltar',
+    btn_reintentar: 'Tentar de novo',
     // Horas de vida
     hv_page_title: 'Calculadora de horas de vida',
     hv_page_desc: 'Baseado em "Sua Grana ou Sua Vida" de Vicki Robin: sua hora real não é seu salário por hora. É seu salário líquido de gastos ligados ao trabalho, dividido por todas as horas que o trabalho consome — incluindo deslocamento, se arrumar e descomprimir.',
@@ -2193,7 +2211,18 @@ tr:last-child td { border: none; }
     </div>
   </div>
 
-  
+
+<div id="sync-banner" role="status" aria-live="polite" style="display:none;padding:10px 16px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span id="sync-banner-icon" style="font-size:18px"></span>
+    <div style="flex:1;min-width:0">
+      <div id="sync-banner-title" style="font-size:13px;font-weight:600"></div>
+      <div id="sync-banner-sub" style="font-size:12px;color:var(--text2);margin-top:2px"></div>
+    </div>
+    <button id="sync-banner-btn" type="button" onclick="reintentarSubida()" style="flex-shrink:0;min-height:44px;padding:0 14px;background:var(--red);color:#fff;border:none;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer"></button>
+  </div>
+</div>
+
 <div id="reminder-banner" style="display:none;background:rgba(240,165,0,0.12);border-bottom:0.5px solid rgba(240,165,0,0.3);padding:10px 16px;cursor:pointer" onclick="cerrarReminder()">
   <div style="display:flex;align-items:center;gap:10px">
     <span style="font-size:18px">🔔</span>
@@ -3086,7 +3115,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.19</div>
+    <div class="drawer-header-version">v9.20</div>
   </div>
 
   <div class="drawer-body">
@@ -3120,7 +3149,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.19</div>
+    <div class="drawer-footer-version">Martifin v9.20</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -5572,9 +5601,49 @@ async function getAuthToken() {
   } catch(e) { return SB_KEY; }
 }
 
+/* ── AVISO DE CAMBIOS SIN SUBIR ───────────────────────────────────────────
+ * Fijo debajo del encabezado mientras haya una copia pendiente (fpro_v3_pending).
+ * motivo: 'offline' (gris, sin botón: sube sola al volver internet) o
+ * 'sesion' / 'nube' / 'red' (rojo, con Reintentar). Antes solo se ponía
+ * rojo el puntito y nadie se enteraba.
+ * ─────────────────────────────────────────────────────────────────────── */
+var _avisoSyncMotivo = null;  // para redibujar el aviso al cambiar de idioma
+function mostrarAvisoSync(motivo) {
+  const banner = document.getElementById('sync-banner');
+  if(!banner) return;
+  _avisoSyncMotivo = motivo;
+  const offline = motivo === 'offline';
+  banner.style.background = offline ? 'var(--bg3)' : 'rgba(240,75,75,0.12)';
+  banner.style.borderBottom = '0.5px solid ' + (offline ? 'var(--border2)' : 'rgba(240,75,75,0.35)');
+  document.getElementById('sync-banner-icon').textContent = offline ? '📴' : '⚠️';
+  const title = document.getElementById('sync-banner-title');
+  title.textContent = t(offline ? 'sync_pendiente_offline' : 'sync_fail_' + motivo);
+  title.style.color = offline ? 'var(--text)' : 'var(--red)';
+  const sub = document.getElementById('sync-banner-sub');
+  sub.textContent = offline ? '' : t('sync_fail_sub');
+  sub.style.display = offline ? 'none' : 'block';
+  const btn = document.getElementById('sync-banner-btn');
+  btn.textContent = t('btn_reintentar');
+  btn.style.display = offline ? 'none' : 'block';
+  banner.style.display = 'block';
+}
+function ocultarAvisoSync() {
+  _avisoSyncMotivo = null;
+  const banner = document.getElementById('sync-banner');
+  if(banner) banner.style.display = 'none';
+}
+// Botón Reintentar y vuelta a la app: sube DATA actual (lo mismo que haría
+// el próximo save(); la copia pendiente nunca es más nueva que DATA).
+function reintentarSubida() {
+  if(isAnonId(USER_ID) || !_cloudLoaded) return;
+  if(localStorage.getItem('fpro_v3_pending') === null) { ocultarAvisoSync(); return; }
+  clearTimeout(_syncTimer);
+  cloudSave(JSON.stringify({...DATA, months: MONTHS}));
+}
+
 async function cloudSave(payload) {
   if(isAnonId(USER_ID)) return;
-  if(!navigator.onLine) { safeSet('fpro_v3_pending', payload); return; }
+  if(!navigator.onLine) { safeSet('fpro_v3_pending', payload); mostrarAvisoSync('offline'); return; }
   showSync('syncing');
   const token = await getAuthToken();
   // La copia pendiente (guardada sin internet) se borra recién cuando esta
@@ -5587,12 +5656,20 @@ async function cloudSave(payload) {
     headers: {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+token,'Prefer':'resolution=merge-duplicates,return=minimal'},
     body: JSON.stringify({id: USER_ID, data: JSON.parse(payload), updated_at: new Date().toISOString()})
   }).then(r => {
-    if(!r.ok) { showSync('error'); return; }
+    if(!r.ok) { subidaFallida(payload, r.status === 401 || r.status === 403 ? 'sesion' : 'nube'); return; }
     if(pendienteAlEnviar !== null && localStorage.getItem('fpro_v3_pending') === pendienteAlEnviar) {
       localStorage.removeItem('fpro_v3_pending');
     }
+    if(localStorage.getItem('fpro_v3_pending') === null) ocultarAvisoSync();
     showSync('ok');
-  }).catch(() => showSync('error'));
+  }).catch(() => subidaFallida(payload, navigator.onLine ? 'red' : 'offline'));
+}
+// Si la subida falla, el payload queda como copia pendiente (igual que sin
+// internet) para que no se pierda si se cierra la app o vuelve la conexión.
+function subidaFallida(payload, motivo) {
+  safeSet('fpro_v3_pending', payload);
+  showSync('error');
+  mostrarAvisoSync(motivo);
 }
 
 async function cloudLoad() {
@@ -5967,6 +6044,7 @@ function setLang(lang) {
   toast(lang==='es'?'Idioma: Español ✓':lang==='en'?'Language: English ✓':'Idioma: Português ✓');
 }
 function applyLang() {
+  if(_avisoSyncMotivo) mostrarAvisoSync(_avisoSyncMotivo);
   // Elementos con data-i18n
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
@@ -6370,7 +6448,10 @@ function revisarCambioDeMes() {
   checkRecordatorios();
 }
 document.addEventListener('visibilitychange', () => {
-  if(document.visibilityState === 'visible') revisarCambioDeMes();
+  if(document.visibilityState !== 'visible') return;
+  revisarCambioDeMes();
+  // Al volver a la app, si quedó algo sin subir, reintentar (no corre al abrir)
+  if(navigator.onLine) reintentarSubida();
 });
 
 // Con pocos meses (≤4) los nombramos todos — es información nueva.
@@ -6957,6 +7038,7 @@ async function logout() {
   // Reset estado en memoria para evitar que save() pise datos del próximo usuario
   DATA = { gastos:[], sueldos:{}, presupuestos:{}, presupuestoGeneral:{}, metas:[], gastosAhorros:[], retirosInversion:[], inversiones:[], invTipos:null };
   _cloudLoaded = false;
+  ocultarAvisoSync();
   invalidateProCache();
   updateProLocks();
   updateAuthUI();
@@ -7199,9 +7281,10 @@ function skipTutorial(){const p=document.getElementById('tutorial-overlay');if(p
 
 /* ── SYNC MEJORADO — offline + reconexión ────────────────────────────────── */
 window.addEventListener('online', () => {
-  const pending = localStorage.getItem('fpro_v3_pending');
-  // No se borra acá: cloudSave la borra solo si la subida sale bien.
-  if(pending) cloudSave(pending);
+  // Sube DATA actual (siempre igual o más nuevo que la copia pendiente: una
+  // subida fallida vieja podría haber dejado una copia más vieja que lo que
+  // ya llegó a la nube). No se borra acá: cloudSave la borra si sale bien.
+  reintentarSubida();
 });
 window.addEventListener('offline', () => {
   const dot = document.getElementById('sync-dot');
