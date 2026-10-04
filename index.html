@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.20';
+const MARTIFIN_VERSION = 'v9.21';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -690,6 +690,8 @@ const LANG = {
     sync_fail_red: 'Conexión inestable: los cambios no se subieron',
     sync_fail_sub: 'Tus cambios están en este dispositivo. No cierres sesión hasta que se suban.',
     sync_pendiente_offline: 'Sin internet — tus cambios se suben cuando vuelva la conexión',
+    sync_fail_lectura: 'No pudimos leer tus datos de la nube',
+    sync_lectura_sub: 'Cerrá y volvé a abrir la app antes de cargar gastos.',
     btn_reintentar: 'Reintentar',
     // Horas de vida
     hv_page_title: 'Calculadora de horas de vida',
@@ -1166,6 +1168,8 @@ const LANG = {
     sync_fail_red: 'Unstable connection: your changes weren\'t uploaded',
     sync_fail_sub: 'Your changes are on this device. Don\'t log out until they\'re uploaded.',
     sync_pendiente_offline: 'No internet — your changes will upload when the connection is back',
+    sync_fail_lectura: 'We couldn\'t read your data from the cloud',
+    sync_lectura_sub: 'Close and reopen the app before adding expenses.',
     btn_reintentar: 'Retry',
     // Life hours
     hv_page_title: 'Life Hours Calculator',
@@ -1642,6 +1646,8 @@ const LANG = {
     sync_fail_red: 'Conexão instável: as alterações não foram enviadas',
     sync_fail_sub: 'Suas alterações estão neste dispositivo. Não saia da conta até que sejam enviadas.',
     sync_pendiente_offline: 'Sem internet — suas alterações serão enviadas quando a conexão voltar',
+    sync_fail_lectura: 'Não conseguimos ler seus dados da nuvem',
+    sync_lectura_sub: 'Feche e abra o app de novo antes de lançar gastos.',
     btn_reintentar: 'Tentar de novo',
     // Horas de vida
     hv_page_title: 'Calculadora de horas de vida',
@@ -3115,7 +3121,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.20</div>
+    <div class="drawer-header-version">v9.21</div>
   </div>
 
   <div class="drawer-body">
@@ -3149,7 +3155,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.20</div>
+    <div class="drawer-footer-version">Martifin v9.21</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -5606,13 +5612,19 @@ async function getAuthToken() {
  * motivo: 'offline' (gris, sin botón: sube sola al volver internet) o
  * 'sesion' / 'nube' / 'red' (rojo, con Reintentar). Antes solo se ponía
  * rojo el puntito y nadie se enteraba.
+ * 'lectura' (rojo, sin botón): no se pudo leer la nube al abrir; pide cerrar
+ * y volver a abrir, porque cargar gastos así puede pisar lo de otro
+ * dispositivo al subir (se arregla de fondo al combinar antes de subir).
  * ─────────────────────────────────────────────────────────────────────── */
 var _avisoSyncMotivo = null;  // para redibujar el aviso al cambiar de idioma
+var _lecturaNubeOk = false;     // la nube ya se leyó bien en esta sesión
+var _lecturaNubeFallida = false;
 function mostrarAvisoSync(motivo) {
   const banner = document.getElementById('sync-banner');
   if(!banner) return;
   _avisoSyncMotivo = motivo;
   const offline = motivo === 'offline';
+  const lectura = motivo === 'lectura';
   banner.style.background = offline ? 'var(--bg3)' : 'rgba(240,75,75,0.12)';
   banner.style.borderBottom = '0.5px solid ' + (offline ? 'var(--border2)' : 'rgba(240,75,75,0.35)');
   document.getElementById('sync-banner-icon').textContent = offline ? '📴' : '⚠️';
@@ -5620,11 +5632,11 @@ function mostrarAvisoSync(motivo) {
   title.textContent = t(offline ? 'sync_pendiente_offline' : 'sync_fail_' + motivo);
   title.style.color = offline ? 'var(--text)' : 'var(--red)';
   const sub = document.getElementById('sync-banner-sub');
-  sub.textContent = offline ? '' : t('sync_fail_sub');
+  sub.textContent = offline ? '' : t(lectura ? 'sync_lectura_sub' : 'sync_fail_sub');
   sub.style.display = offline ? 'none' : 'block';
   const btn = document.getElementById('sync-banner-btn');
   btn.textContent = t('btn_reintentar');
-  btn.style.display = offline ? 'none' : 'block';
+  btn.style.display = offline || lectura ? 'none' : 'block';
   banner.style.display = 'block';
 }
 function ocultarAvisoSync() {
@@ -5632,11 +5644,29 @@ function ocultarAvisoSync() {
   const banner = document.getElementById('sync-banner');
   if(banner) banner.style.display = 'none';
 }
+// Sin cambios pendientes: queda el aviso de lectura si sigue vigente, si no nada.
+function avisoSyncSinPendientes() {
+  if(_lecturaNubeFallida) mostrarAvisoSync('lectura');
+  else ocultarAvisoSync();
+}
+// Solo si la nube todavía no se leyó bien en esta sesión (al abrir se lee dos
+// veces) y hay internet: abrir sin conexión sigue funcionando como siempre.
+function lecturaNubeFallida() {
+  if(_lecturaNubeOk || !navigator.onLine) return;
+  _lecturaNubeFallida = true;
+  // Un aviso de subida fallida es más urgente: no se tapa
+  if(!_avisoSyncMotivo || _avisoSyncMotivo === 'offline') mostrarAvisoSync('lectura');
+}
+function lecturaNubeOk() {
+  _lecturaNubeOk = true;
+  _lecturaNubeFallida = false;
+  if(_avisoSyncMotivo === 'lectura') ocultarAvisoSync();
+}
 // Botón Reintentar y vuelta a la app: sube DATA actual (lo mismo que haría
 // el próximo save(); la copia pendiente nunca es más nueva que DATA).
 function reintentarSubida() {
   if(isAnonId(USER_ID) || !_cloudLoaded) return;
-  if(localStorage.getItem('fpro_v3_pending') === null) { ocultarAvisoSync(); return; }
+  if(localStorage.getItem('fpro_v3_pending') === null) { avisoSyncSinPendientes(); return; }
   clearTimeout(_syncTimer);
   cloudSave(JSON.stringify({...DATA, months: MONTHS}));
 }
@@ -5660,7 +5690,7 @@ async function cloudSave(payload) {
     if(pendienteAlEnviar !== null && localStorage.getItem('fpro_v3_pending') === pendienteAlEnviar) {
       localStorage.removeItem('fpro_v3_pending');
     }
-    if(localStorage.getItem('fpro_v3_pending') === null) ocultarAvisoSync();
+    if(localStorage.getItem('fpro_v3_pending') === null) avisoSyncSinPendientes();
     showSync('ok');
   }).catch(() => subidaFallida(payload, navigator.onLine ? 'red' : 'offline'));
 }
@@ -5679,9 +5709,13 @@ async function cloudLoad() {
   fetch(SB_URL + '/rest/v1/sync_data?id=eq.' + encodeURIComponent(USER_ID) + '&select=data', {
     headers: {'apikey':SB_KEY,'Authorization':'Bearer '+token}
   })
-  .then(r => r.json())
+  // Una respuesta de error (p.ej. sesión vencida) antes se leía como "nube
+  // vacía" y el puntito quedaba verde.
+  .then(r => { if(!r.ok) throw new Error('cloudLoad HTTP ' + r.status); return r.json(); })
   .then(rows => {
-    if(!rows||!rows.length||!rows[0].data) { _cloudLoaded = true; showSync('ok'); return; }
+    if(!Array.isArray(rows)) throw new Error('cloudLoad: respuesta inesperada');
+    lecturaNubeOk();
+    if(!rows.length||!rows[0].data) { _cloudLoaded = true; showSync('ok'); return; }
     const data = rows[0].data;
     if(!data.gastos && !data.months && !data.sueldos) { _cloudLoaded = true; showSync('ok'); return; }
     // Si había un save() pendiente con datos viejos, cancelarlo antes de pisar
@@ -5705,7 +5739,14 @@ async function cloudLoad() {
     if(document.getElementById('pg-ajustes')?.classList.contains('active')) renderAjustes();
     _cloudLoaded = true;
     showSync('ok');
-  }).catch(() => { _cloudLoaded = true; showSync('error'); });
+  }).catch(e => {
+    console.warn(e);
+    // Como antes, las subidas quedan habilitadas (cortarlas frenaría los
+    // gastos cargados sin internet); el aviso pide reabrir antes de cargar.
+    _cloudLoaded = true;
+    showSync('error');
+    lecturaNubeFallida();
+  });
 }
 
 /* ── CATEGORÍAS PERSONALIZADAS EDITOR ────────────────────────────────────── */
@@ -7038,6 +7079,7 @@ async function logout() {
   // Reset estado en memoria para evitar que save() pise datos del próximo usuario
   DATA = { gastos:[], sueldos:{}, presupuestos:{}, presupuestoGeneral:{}, metas:[], gastosAhorros:[], retirosInversion:[], inversiones:[], invTipos:null };
   _cloudLoaded = false;
+  _lecturaNubeOk = false; _lecturaNubeFallida = false;
   ocultarAvisoSync();
   invalidateProCache();
   updateProLocks();
