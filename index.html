@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.21';
+const MARTIFIN_VERSION = 'v9.22';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -38,7 +38,17 @@ function esc(s) {
 // Safe localStorage.setItem — no tira excepciones si quota exceeded o modo privado
 function safeSet(key, val) {
   try { localStorage.setItem(key, val); return true; }
-  catch(e) { console.warn('localStorage.setItem failed:', key, e.message); return false; }
+  catch(e) {
+    // Sin espacio: las copias de rescate son lo primero que se sacrifica,
+    // para que el guardado normal nunca falle por culpa de ellas.
+    if(key !== 'fpro_v3_rescate' && localStorage.getItem('fpro_v3_rescate') !== null) {
+      localStorage.removeItem('fpro_v3_rescate');
+      console.warn('Sin espacio: se borraron las copias de rescate para guardar', key);
+      try { localStorage.setItem(key, val); return true; } catch(e2) {}
+    }
+    console.warn('localStorage.setItem failed:', key, e.message);
+    return false;
+  }
 }
 
 /* ── MIGRACIÓN finko_ → martifin_ ────────────────────────────────────────
@@ -692,6 +702,10 @@ const LANG = {
     sync_pendiente_offline: 'Sin internet — tus cambios se suben cuando vuelva la conexión',
     sync_fail_lectura: 'No pudimos leer tus datos de la nube',
     sync_lectura_sub: 'Cerrá y volvé a abrir la app antes de cargar gastos.',
+    sync_rescate: 'Este dispositivo tenía cambios sin subir',
+    sync_rescate_gasto: 'gasto', sync_rescate_gastos: 'gastos',
+    sync_rescate_sub: 'Los guardamos aparte para no perderlos. Más adelante vas a poder recuperarlos.',
+    btn_entendido: 'Entendido',
     btn_reintentar: 'Reintentar',
     // Horas de vida
     hv_page_title: 'Calculadora de horas de vida',
@@ -1170,6 +1184,10 @@ const LANG = {
     sync_pendiente_offline: 'No internet — your changes will upload when the connection is back',
     sync_fail_lectura: 'We couldn\'t read your data from the cloud',
     sync_lectura_sub: 'Close and reopen the app before adding expenses.',
+    sync_rescate: 'This device had changes that weren\'t uploaded',
+    sync_rescate_gasto: 'expense', sync_rescate_gastos: 'expenses',
+    sync_rescate_sub: 'We saved them separately so they aren\'t lost. You\'ll be able to recover them later.',
+    btn_entendido: 'Got it',
     btn_reintentar: 'Retry',
     // Life hours
     hv_page_title: 'Life Hours Calculator',
@@ -1648,6 +1666,10 @@ const LANG = {
     sync_pendiente_offline: 'Sem internet — suas alterações serão enviadas quando a conexão voltar',
     sync_fail_lectura: 'Não conseguimos ler seus dados da nuvem',
     sync_lectura_sub: 'Feche e abra o app de novo antes de lançar gastos.',
+    sync_rescate: 'Este dispositivo tinha alterações não enviadas',
+    sync_rescate_gasto: 'gasto', sync_rescate_gastos: 'gastos',
+    sync_rescate_sub: 'Guardamos à parte para não perdê-las. Mais adiante você vai poder recuperá-las.',
+    btn_entendido: 'Entendi',
     btn_reintentar: 'Tentar de novo',
     // Horas de vida
     hv_page_title: 'Calculadora de horas de vida',
@@ -2225,7 +2247,7 @@ tr:last-child td { border: none; }
       <div id="sync-banner-title" style="font-size:13px;font-weight:600"></div>
       <div id="sync-banner-sub" style="font-size:12px;color:var(--text2);margin-top:2px"></div>
     </div>
-    <button id="sync-banner-btn" type="button" onclick="reintentarSubida()" style="flex-shrink:0;min-height:44px;padding:0 14px;background:var(--red);color:#fff;border:none;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer"></button>
+    <button id="sync-banner-btn" type="button" onclick="accionAvisoSync()" style="flex-shrink:0;min-height:44px;padding:0 14px;background:var(--red);color:#fff;border:none;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer"></button>
   </div>
 </div>
 
@@ -3121,7 +3143,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.21</div>
+    <div class="drawer-header-version">v9.22</div>
   </div>
 
   <div class="drawer-body">
@@ -3155,7 +3177,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.21</div>
+    <div class="drawer-footer-version">Martifin v9.22</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -5615,35 +5637,94 @@ async function getAuthToken() {
  * 'lectura' (rojo, sin botón): no se pudo leer la nube al abrir; pide cerrar
  * y volver a abrir, porque cargar gastos así puede pisar lo de otro
  * dispositivo al subir (se arregla de fondo al combinar antes de subir).
+ * 'rescate' (ámbar, con Entendido): al abrir, la nube reemplazó una copia
+ * pendiente que se guardó aparte (ver guardarRescate).
  * ─────────────────────────────────────────────────────────────────────── */
 var _avisoSyncMotivo = null;  // para redibujar el aviso al cambiar de idioma
 var _lecturaNubeOk = false;     // la nube ya se leyó bien en esta sesión
 var _lecturaNubeFallida = false;
+var _rescateGastos = 0;         // gastos de la copia rescatada que la nube no tenía
+const AVISO_SYNC_ESTILOS = {
+  gris:  { fondo: 'var(--bg3)', borde: 'var(--border2)', color: 'var(--text)', icono: '📴' },
+  rojo:  { fondo: 'rgba(240,75,75,0.12)', borde: 'rgba(240,75,75,0.35)', color: 'var(--red)', icono: '⚠️' },
+  ambar: { fondo: 'rgba(240,165,0,0.12)', borde: 'rgba(240,165,0,0.3)', color: '#f0a500', icono: '🛟' }
+};
 function mostrarAvisoSync(motivo) {
   const banner = document.getElementById('sync-banner');
   if(!banner) return;
   _avisoSyncMotivo = motivo;
-  const offline = motivo === 'offline';
-  const lectura = motivo === 'lectura';
-  banner.style.background = offline ? 'var(--bg3)' : 'rgba(240,75,75,0.12)';
-  banner.style.borderBottom = '0.5px solid ' + (offline ? 'var(--border2)' : 'rgba(240,75,75,0.35)');
-  document.getElementById('sync-banner-icon').textContent = offline ? '📴' : '⚠️';
+  let estilo = 'rojo', titulo = t('sync_fail_' + motivo), sub = t('sync_fail_sub'), boton = t('btn_reintentar');
+  if(motivo === 'offline') { estilo = 'gris'; titulo = t('sync_pendiente_offline'); sub = ''; boton = ''; }
+  if(motivo === 'lectura') { sub = t('sync_lectura_sub'); boton = ''; }
+  if(motivo === 'rescate') {
+    estilo = 'ambar'; titulo = t('sync_rescate');
+    if(_rescateGastos > 0) titulo += ` (${_rescateGastos} ${t(_rescateGastos === 1 ? 'sync_rescate_gasto' : 'sync_rescate_gastos')})`;
+    sub = t('sync_rescate_sub'); boton = t('btn_entendido');
+  }
+  const e = AVISO_SYNC_ESTILOS[estilo];
+  banner.style.background = e.fondo;
+  banner.style.borderBottom = '0.5px solid ' + e.borde;
+  document.getElementById('sync-banner-icon').textContent = e.icono;
   const title = document.getElementById('sync-banner-title');
-  title.textContent = t(offline ? 'sync_pendiente_offline' : 'sync_fail_' + motivo);
-  title.style.color = offline ? 'var(--text)' : 'var(--red)';
-  const sub = document.getElementById('sync-banner-sub');
-  sub.textContent = offline ? '' : t(lectura ? 'sync_lectura_sub' : 'sync_fail_sub');
-  sub.style.display = offline ? 'none' : 'block';
+  title.textContent = titulo;
+  title.style.color = e.color;
+  const subEl = document.getElementById('sync-banner-sub');
+  subEl.textContent = sub;
+  subEl.style.display = sub ? 'block' : 'none';
   const btn = document.getElementById('sync-banner-btn');
-  btn.textContent = t('btn_reintentar');
-  btn.style.display = offline || lectura ? 'none' : 'block';
+  btn.textContent = boton;
+  btn.style.display = boton ? 'block' : 'none';
+  btn.style.background = estilo === 'ambar' ? '#f0a500' : 'var(--red)';
+  btn.style.color = estilo === 'ambar' ? '#000' : '#fff';
   banner.style.display = 'block';
+}
+function accionAvisoSync() {
+  if(_avisoSyncMotivo === 'rescate') avisoSyncSinPendientes();
+  else reintentarSubida();
 }
 function ocultarAvisoSync() {
   _avisoSyncMotivo = null;
   const banner = document.getElementById('sync-banner');
   if(banner) banner.style.display = 'none';
 }
+/* ── COPIAS DE RESCATE ────────────────────────────────────────────────────
+ * Cuando la nube reemplaza lo local al abrir, la copia pendiente (cambios
+ * que no llegaron a subir) ya no se tira: se guarda en fpro_v3_rescate para
+ * poder recuperarla después (la combinación por registro la va a ofrecer).
+ * Nunca se sube. Máximo 2 copias y, entre las dos, RESCATE_MAX_CHARS
+ * (~1300 gastos ocupan 250.000). La más nueva se guarda siempre que haya
+ * lugar; la anterior solo si entra en el tope. Si el espacio no alcanza no
+ * se guarda: nunca le quita lugar al guardado normal (ver safeSet).
+ * ─────────────────────────────────────────────────────────────────────── */
+const RESCATE_KEY = 'fpro_v3_rescate';
+const RESCATE_MAX_COPIAS = 2;
+const RESCATE_MAX_CHARS = 600000;
+function guardarRescate(pendiente) {
+  let copias = [];
+  try { copias = JSON.parse(localStorage.getItem(RESCATE_KEY) || '[]'); } catch(e) {}
+  if(!Array.isArray(copias)) copias = [];
+  const nueva = { fecha: new Date().toISOString(), uid: USER_ID, data: JSON.parse(pendiente) };
+  copias = [...copias, nueva].slice(-RESCATE_MAX_COPIAS);
+  while(copias.length > 1 && JSON.stringify(copias).length > RESCATE_MAX_CHARS) copias.shift();
+  try { localStorage.setItem(RESCATE_KEY, JSON.stringify(copias)); return true; }
+  catch(e) {
+    try { localStorage.setItem(RESCATE_KEY, JSON.stringify([nueva])); return true; }
+    catch(e2) { console.warn('Copia de rescate no guardada (sin espacio)'); return false; }
+  }
+}
+// JSON con las claves ordenadas: la nube (jsonb) devuelve las claves en otro
+// orden, así que comparar el texto tal cual daría "distinto" siempre.
+function jsonOrdenado(v) {
+  if(Array.isArray(v)) return '[' + v.map(jsonOrdenado).join(',') + ']';
+  if(v && typeof v === 'object') return '{' + Object.keys(v).sort().filter(k => v[k] !== undefined).map(k => JSON.stringify(k) + ':' + jsonOrdenado(v[k])).join(',') + '}';
+  return JSON.stringify(v);
+}
+// Gastos de la copia pendiente que no están (o están distintos) en la nube
+function contarGastosSinSubir(pendiente, nube) {
+  const enNube = new Map((nube.gastos || []).map(g => [g.id, jsonOrdenado(g)]));
+  return (pendiente.gastos || []).filter(g => enNube.get(g.id) !== jsonOrdenado(g)).length;
+}
+
 // Sin cambios pendientes: queda el aviso de lectura si sigue vigente, si no nada.
 function avisoSyncSinPendientes() {
   if(_lecturaNubeFallida) mostrarAvisoSync('lectura');
@@ -5725,7 +5806,17 @@ async function cloudLoad() {
     // Lo local acaba de ser reemplazado por la nube: una copia pendiente vieja
     // ya no corresponde a lo que se ve, y si se subiera más tarde (al volver
     // internet) pisaría datos más nuevos de la nube, p.ej. de otro dispositivo.
-    // (Combinar en vez de reemplazar queda para la sesión de sincronización.)
+    // No se tira: se guarda aparte (copia de rescate) y se avisa.
+    const pendiente = localStorage.getItem('fpro_v3_pending');
+    if(pendiente !== null) {
+      try {
+        const p = JSON.parse(pendiente);
+        if(jsonOrdenado(p) !== jsonOrdenado(data)) {
+          _rescateGastos = contarGastosSinSubir(p, data);
+          if(guardarRescate(pendiente)) mostrarAvisoSync('rescate');
+        }
+      } catch(e) { console.warn('Copia pendiente ilegible, no se rescata', e); }
+    }
     localStorage.removeItem('fpro_v3_pending');
     // La nube reemplaza MONTHS: volver a asegurar el mes actual (sin guardar)
     asegurarMesActual();
