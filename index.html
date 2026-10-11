@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.26';
+const MARTIFIN_VERSION = 'v9.27';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -229,6 +229,9 @@ const LANG = {
 
     // KPIs
     kpi_ingresos: 'Ingresos',
+    falta_ingreso_titulo: '¿Cuánto cobraste en {mes}?',
+    falta_ingreso_desc: 'Cargá tus ingresos para completar el resumen del mes.',
+    falta_ingreso_btn: 'Cargar mis ingresos →',
     kpi_gastos: 'Gastos',
     kpi_ahorro: 'Ahorro',
     kpi_tasa: 'Tasa ahorro',
@@ -755,6 +758,9 @@ const LANG = {
     group_inversiones: 'Investments',
     hdr_sub: 'Transform your relationship with money',
     kpi_ingresos: 'Income',
+    falta_ingreso_titulo: 'How much did you earn in {mes}?',
+    falta_ingreso_desc: 'Add your income to complete this month\'s summary.',
+    falta_ingreso_btn: 'Add my income →',
     kpi_gastos: 'Expenses',
     kpi_ahorro: 'Savings',
     kpi_tasa: 'Savings rate',
@@ -1238,6 +1244,9 @@ const LANG = {
     group_inversiones: 'Investimentos',
     hdr_sub: 'Transforme sua relação com o dinheiro',
     kpi_ingresos: 'Renda',
+    falta_ingreso_titulo: 'Quanto você recebeu em {mes}?',
+    falta_ingreso_desc: 'Registre sua renda para completar o resumo do mês.',
+    falta_ingreso_btn: 'Registrar minha renda →',
     kpi_gastos: 'Gastos',
     kpi_ahorro: 'Poupança',
     kpi_tasa: 'Taxa de poupança',
@@ -2283,6 +2292,12 @@ tr:last-child td { border: none; }
         <button id="tog-solo" onclick="setVista('solo')" style="flex:1;padding:8px;border:none;border-radius:calc(var(--r) - 4px);font-size:13px;font-weight:600;cursor:pointer;background:var(--teal);color:#000"><span data-i18n="btn_solo_yo">Solo yo</span></button>
         <button id="tog-pareja" onclick="setVista('pareja')" style="flex:1;padding:8px;border:none;border-radius:calc(var(--r) - 4px);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--text2)"><span data-i18n="btn_hogar">Hogar</span></button>
       </div>
+      <!-- Aviso si el mes que se está viendo no tiene ingresos (fuera de las dos vistas: va en "Solo yo" y en "Hogar") -->
+      <div id="falta-ingreso-card" style="display:none;background:rgba(29,186,135,0.08);border:0.5px solid var(--teal);border-radius:var(--r);padding:14px;margin-bottom:12px">
+        <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">💵 <span id="falta-ingreso-titulo"></span></div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:12px" data-i18n="falta_ingreso_desc">Cargá tus ingresos para completar el resumen del mes.</div>
+        <button class="btn btn-primary" onclick="irACargarSueldo(selMes)"><span data-i18n="falta_ingreso_btn">Cargar mis ingresos →</span></button>
+      </div>
       <div id="kpi-grid-normal">
       <div id="resumen-rapido" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:10px;display:none">
         <div style="display:flex;justify-content:space-between;gap:10px">
@@ -2303,7 +2318,7 @@ tr:last-child td { border: none; }
         </div>
       </div>
       <div class="kpi-grid">
-        <div class="kpi">
+        <div class="kpi" onclick="irACargarSueldo(selMes)" style="cursor:pointer">
           <div class="kpi-label"><span data-i18n="kpi_ingresos">Ingresos</span></div>
           <div class="kpi-value" id="k-ing" style="color:var(--teal)">—</div>
         </div>
@@ -3154,7 +3169,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.26</div>
+    <div class="drawer-header-version">v9.27</div>
   </div>
 
   <div class="drawer-body">
@@ -3188,7 +3203,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.26</div>
+    <div class="drawer-footer-version">Martifin v9.27</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -3662,6 +3677,12 @@ function renderKPIs() {
   const setText = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
   const setColor = (id, col) => { const el = document.getElementById(id); if(el) el.style.color = col; };
   setText('k-ing', fmt(d.sueldo));
+  // Tarjeta "¿Cuánto cobraste?" mientras el mes no tenga sueldo ni otros ingresos
+  const faltaIng = document.getElementById('falta-ingreso-card');
+  if(faltaIng) {
+    faltaIng.style.display = d.sueldo ? 'none' : 'block';
+    setText('falta-ingreso-titulo', t('falta_ingreso_titulo').replace('{mes}', getMonthDisplay(selMes)));
+  }
   setText('k-gas', fmt(d.totalGastos));
   setText('k-aho', fmt(d.ahorro));
   setColor('k-aho', (d.ahorro||0) >= 0 ? 'var(--teal)' : 'var(--red)');
@@ -4290,6 +4311,15 @@ function guardarGasto() {
   resetMonedaForm('f');
   toast(t('toast_gasto_ok'));
   renderQuick();
+}
+
+// Lleva a Cargar con "Ingresos del mes" abierto y el sueldo de ese mes listo
+// para completar. Lo usan el final del onboarding y la tarjeta y el KPI
+// "Ingresos" del Resumen.
+function irACargarSueldo(mes) {
+  const sMes = document.getElementById('s-mes');
+  if(sMes && mes && [...sMes.options].some(o => o.value === mes)) { sMes.value = mes; renderQuick(); }
+  navTo('cargar', document.querySelector('.nav-btn[onclick^="navTo(\'cargar\'"]'));
 }
 
 function guardarSueldo() {
@@ -5489,9 +5519,7 @@ function obFinish() {
   buildMonthScroll();
   renderKPIs(); renderCatBars(); renderChart(); renderAcumulado();
   // Ir directo a cargar el sueldo del mes elegido en el onboarding
-  const sMes = document.getElementById('s-mes');
-  if(sMes && nombre) { sMes.value = nombre; renderQuick(); }
-  navTo('cargar', document.querySelector('.nav-btn[onclick^="navTo(\'cargar\'"]'));
+  irACargarSueldo(nombre);
 }
 
 function obSkip() {
