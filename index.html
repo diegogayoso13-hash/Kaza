@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.28';
+const MARTIFIN_VERSION = 'v9.29';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -3176,7 +3176,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.28</div>
+    <div class="drawer-header-version">v9.29</div>
   </div>
 
   <div class="drawer-body">
@@ -3210,7 +3210,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.28</div>
+    <div class="drawer-footer-version">Martifin v9.29</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -4207,13 +4207,25 @@ function resetGruposCargar() {
 }
 
 /* ── CARGAR ─────────────────────────────────────────────────────────────── */
-function populateSelects() {
+// Selectores de mes que se rearman al "refrescar" (idioma, categorías, nube,
+// agregar mes...). Si la persona elige un mes a mano queda marcado, y al
+// rearmarlos se respeta; los no marcados siguen proponiendo el mes por defecto.
+const SELECTORES_MES = ['f-mes','s-mes','ga-mes','ri-mes','inv-mes-sel','p-mes','e-mes'];
+document.addEventListener('change', e => {
+  if(SELECTORES_MES.includes(e.target.id)) e.target.dataset.elegido = '1';
+});
+
+// reiniciarMes: la app pasó de un mes al otro estando abierta, todos vuelven al mes actual.
+function populateSelects(reiniciarMes) {
   const rev = [...MONTHS].reverse();
   populateInvTipoSelect();
   ['f-mes','s-mes','ga-mes','ri-mes','inv-mes-sel'].forEach(id => {
     const el = document.getElementById(id);
     if(!el) return;
+    const elegido = !reiniciarMes && el.dataset.elegido ? el.value : '';
     el.innerHTML = rev.map(m => `<option value="${m}">${getMonthDisplay(m)}</option>`).join('');
+    if(elegido && MONTHS.includes(elegido)) { el.value = elegido; return; }
+    delete el.dataset.elegido;
     // Proponer el mes actual (no el último de la lista), igual que el botón +
     if(MONTHS.includes(mesActualKey())) el.value = mesActualKey();
   });
@@ -4325,7 +4337,7 @@ function guardarGasto() {
 // "Ingresos" del Resumen.
 function irACargarSueldo(mes) {
   const sMes = document.getElementById('s-mes');
-  if(sMes && mes && [...sMes.options].some(o => o.value === mes)) { sMes.value = mes; renderQuick(); }
+  if(sMes && mes && [...sMes.options].some(o => o.value === mes)) { sMes.value = mes; sMes.dataset.elegido = '1'; renderQuick(); }
   navTo('cargar', document.querySelector('.nav-btn[onclick^="navTo(\'cargar\'"]'));
 }
 
@@ -4735,7 +4747,7 @@ function agregarMes() {
   refreshAll();
   renderAjustes();
   const sMes = document.getElementById('s-mes');
-  if(sMes) { sMes.value = nombre; renderQuick(); }
+  if(sMes) { sMes.value = nombre; sMes.dataset.elegido = '1'; renderQuick(); }
   toast(`${nombre} ${t('toast_mes_agregado')}`);
 }
 
@@ -4755,9 +4767,9 @@ function eliminarMes(i) {
   });
 }
 
-function refreshAll() {
-  populateSelects();
-  populateSelectsExtra();
+function refreshAll(reiniciarMes) {
+  populateSelects(reiniciarMes);
+  populateSelectsExtra(reiniciarMes);
   buildMonthScroll();
   renderKPIs();
   renderCatBars();
@@ -4941,16 +4953,20 @@ async function guardarPresupuesto() {
 }
 
 /* ── POPULATE P-MES AND E-MES ────────────────────────────────────────────── */
-function populateSelectsExtra() {
+// Misma regla que populateSelects (ver SELECTORES_MES). Presupuesto, si la
+// persona no eligió un mes, usa el que se está mirando en el Resumen. El mes
+// de "editar gasto" lo fija ese modal al abrirse, así que se conserva siempre.
+function populateSelectsExtra(reiniciarMes) {
   const rev = [...MONTHS].reverse();
   ['p-mes','e-mes'].forEach(id => {
     const el = document.getElementById(id); if(!el) return;
+    const elegido = !reiniciarMes && (id === 'e-mes' || el.dataset.elegido) ? el.value : '';
     el.innerHTML = rev.map(m=>`<option value="${m}">${getMonthDisplay(m)}</option>`).join('');
+    if(elegido && MONTHS.includes(elegido)) { el.value = elegido; return; }
+    delete el.dataset.elegido;
+    if(id === 'p-mes') el.value = selMes;
   });
-  if(document.getElementById('p-mes')) {
-    document.getElementById('p-mes').value = selMes;
-    renderPresupuestoInputs();
-  }
+  if(document.getElementById('p-mes')) renderPresupuestoInputs();
   // Populate motivo selects with translated options
   const gaMotivo = document.getElementById('ga-motivo');
   if(gaMotivo) {
@@ -6624,7 +6640,7 @@ function asegurarMesActual() {
 function revisarCambioDeMes() {
   if(!asegurarMesActual()) return;
   selMes = mesActualKey();
-  refreshAll();
+  refreshAll(true);  // mes nuevo: los selectores sí saltan al mes actual
   checkRecordatorios();
 }
 document.addEventListener('visibilitychange', () => {
