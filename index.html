@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.23';
+const MARTIFIN_VERSION = 'v9.24';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -468,7 +468,7 @@ const LANG = {
     ob_codigo_hint: 'Sin espacios. Usalo siempre para acceder a tus datos desde cualquier dispositivo.',
     ob_listo: '¡Todo listo!',
     ob_listo_desc: 'Tu cuenta está configurada. Empezá cargando tu sueldo del mes.',
-    ob_ir_resumen: 'Ir al Resumen →',
+    ob_cargar_sueldo: 'Cargar mi sueldo →',
     ob_paso1: 'Cargá tu sueldo del mes',
     ob_paso2: 'Registrá tu primer gasto',
     ob_paso3: 'Mirá tu Resumen',
@@ -968,7 +968,7 @@ const LANG = {
     ob_codigo_hint: 'No spaces. Always use it to access your data from any device.',
     ob_listo: 'All set!',
     ob_listo_desc: 'Your account is configured. Start by adding your monthly income.',
-    ob_ir_resumen: 'Go to Summary →',
+    ob_cargar_sueldo: 'Add my income →',
     ob_paso1: 'Add your monthly income',
     ob_paso2: 'Record your first expense',
     ob_paso3: 'Check your Summary',
@@ -1451,7 +1451,7 @@ const LANG = {
     ob_codigo_hint: 'Sem espaços. Use sempre para acessar seus dados de qualquer dispositivo.',
     ob_listo: 'Tudo pronto!',
     ob_listo_desc: 'Sua conta está configurada. Comece registrando sua renda do mês.',
-    ob_ir_resumen: 'Ir ao Resumo →',
+    ob_cargar_sueldo: 'Registrar minha renda →',
     ob_paso1: 'Registre sua renda do mês',
     ob_paso2: 'Registre seu primeiro gasto',
     ob_paso3: 'Veja seu Resumo',
@@ -2185,7 +2185,7 @@ tr:last-child td { border: none; }
           <div style="font-size:13px;color:#555" data-i18n="ob_paso3">Mirá tu Resumen</div>
         </div>
       </div>
-      <button onclick="obFinish()" style="width:100%;padding:15px;background:#1DBA87;border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:600;cursor:pointer"><span data-i18n="ob_ir_resumen">Ir al Resumen →</span></button>
+      <button onclick="obFinish()" style="width:100%;padding:15px;background:#1DBA87;border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:600;cursor:pointer"><span data-i18n="ob_cargar_sueldo">Cargar mi sueldo →</span></button>
     </div>
 
   </div>
@@ -3154,7 +3154,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.23</div>
+    <div class="drawer-header-version">v9.24</div>
   </div>
 
   <div class="drawer-body">
@@ -3188,7 +3188,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.23</div>
+    <div class="drawer-footer-version">Martifin v9.24</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -5473,8 +5473,8 @@ function obFinish() {
   }
   const mes = document.getElementById('ob-mes')?.value;
   const anio = document.getElementById('ob-anio')?.value;
-  if(mes && anio) {
-    const nombre = mes + ' ' + anio;
+  const nombre = (mes && anio) ? mes + ' ' + anio : null;
+  if(nombre) {
     if(!MONTHS.includes(nombre)) {
       MONTHS.push(nombre);
       MONTHS.sort((a,b) => mesOrdenCronologico(a) - mesOrdenCronologico(b));
@@ -5488,6 +5488,10 @@ function obFinish() {
   if(typeof populateSelectsExtra==='function') populateSelectsExtra();
   buildMonthScroll();
   renderKPIs(); renderCatBars(); renderChart(); renderAcumulado();
+  // Ir directo a cargar el sueldo del mes elegido en el onboarding
+  const sMes = document.getElementById('s-mes');
+  if(sMes && nombre) { sMes.value = nombre; renderQuick(); }
+  navTo('cargar', document.querySelector('.nav-btn[onclick^="navTo(\'cargar\'"]'));
 }
 
 function obSkip() {
