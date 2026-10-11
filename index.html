@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.25';
+const MARTIFIN_VERSION = 'v9.26';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -3154,7 +3154,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.25</div>
+    <div class="drawer-header-version">v9.26</div>
   </div>
 
   <div class="drawer-body">
@@ -3188,7 +3188,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.25</div>
+    <div class="drawer-footer-version">Martifin v9.26</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -7438,7 +7438,9 @@ window.addEventListener('offline', () => {
   toast(t('sync_offline'));
 });
 
-/* ── INIT AUTH + TUTORIAL ────────────────────────────────────────────────── */
+/* ── INIT AUTH ───────────────────────────────────────────────────────────── */
+// El tutorial ya no se abre solo al arrancar (tapaba la app y los avisos de la
+// nube): se abre solo desde el botón "Ver tutorial de uso" de Ajustes.
 (function initMejoras() {
   // Always init supabaseClient so login/register works
   initSupabaseAuth();
@@ -7451,10 +7453,6 @@ window.addEventListener('offline', () => {
   setTimeout(updateProLocks, 1500);
   // Actualizar UI de sesión
   setTimeout(updateAuthUI, 500);
-  // Tutorial for returning users
-  setTimeout(() => { 
-    if(!localStorage.getItem('martifin_tutorial_done') && localStorage.getItem('martifin_onboarded')) startTutorial(); 
-  }, 3500);
 })();
 
 </script>
