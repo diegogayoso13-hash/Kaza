@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.29';
+const MARTIFIN_VERSION = 'v9.30';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -3176,7 +3176,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.29</div>
+    <div class="drawer-header-version">v9.30</div>
   </div>
 
   <div class="drawer-body">
@@ -3210,7 +3210,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.29</div>
+    <div class="drawer-footer-version">Martifin v9.30</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -4243,16 +4243,34 @@ function populateSelects(reiniciarMes) {
   renderQuick();
 }
 
+// Mes en el que la persona escribió Sueldo/Ahorro sin guardar (null = nada).
+// Mientras sea el mes del selector, refrescar la pantalla (nube, idioma,
+// guardar un gasto, otros ingresos...) no pisa esos dos campos.
+let _sueldoTipeadoMes = null;
+document.addEventListener('input', e => {
+  if(e.target.id === 's-sueldo' || e.target.id === 's-ahorro') _sueldoTipeadoMes = document.getElementById('s-mes')?.value || null;
+});
+function sueldoSinGuardar() {
+  const mes = document.getElementById('s-mes')?.value;
+  if(!mes || _sueldoTipeadoMes !== mes) return false;
+  const u = DATA.sueldos[mes] || {};
+  return document.getElementById('s-sueldo').value !== String(u.sueldo || '') ||
+         document.getElementById('s-ahorro').value !== String(u.ahorro || '');
+}
+
 function renderQuick() {
   const mes = document.getElementById('s-mes')?.value;
   if(!mes) return;
   renderExtras(mes);
-  // Mostrar valores guardados en los inputs
+  // Mostrar valores guardados en los inputs (salvo que haya algo tipeado sin guardar en este mes)
   const u = DATA.sueldos[mes] || {};
   const ss = document.getElementById('s-sueldo');
   const sa = document.getElementById('s-ahorro');
-  if(ss) ss.value = u.sueldo || '';
-  if(sa) sa.value = u.ahorro || '';
+  if(!sueldoSinGuardar()) {
+    _sueldoTipeadoMes = null;
+    if(ss) ss.value = u.sueldo || '';
+    if(sa) sa.value = u.ahorro || '';
+  }
   const d = getMesData(mes);
   const tasa = d.sueldo&&d.ahorro!=null ? pct(d.ahorro/d.sueldo) : '—';
   const inv = u.inversion ?? HIST[mes]?.inversion ?? null;
@@ -4355,6 +4373,7 @@ function guardarSueldo() {
   save();
   document.getElementById('s-sueldo').value = '';
   document.getElementById('s-ahorro').value = '';
+  _sueldoTipeadoMes = null;  // ya está guardado: mostrar lo guardado
   toast(t('toast_sueldo_ok'));
   renderQuick(); renderInversiones();
 }
@@ -7852,6 +7871,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 /* ── DETECCIÓN DE DATOS SIN GUARDAR ────────────────────────────────── */
 function hayDatosSinGuardar() {
+  // Sueldo/Ahorro siempre muestran lo guardado: cuentan solo si se tipeó algo distinto
+  if(sueldoSinGuardar()) return true;
   const campos = ['f-desc','f-monto','ga-desc','ga-monto','ri-desc','ri-monto','s-inversion','s-extra-desc','s-extra-monto'];
   return campos.some(id => {
     const el = document.getElementById(id);
@@ -7868,6 +7889,9 @@ function limpiarFormulariosCargar() {
   if (catSel) delete catSel.dataset.userSet;
   const subcatSel = document.getElementById('f-subcat');
   if (subcatSel) delete subcatSel.dataset.userSet;
+  // Descartar el sueldo/ahorro tipeado: volver a mostrar lo guardado
+  _sueldoTipeadoMes = null;
+  renderQuick();
 }
 
 function fabAddGasto() {
