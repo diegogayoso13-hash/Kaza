@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.22';
+const MARTIFIN_VERSION = 'v9.23';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -220,7 +220,8 @@ const LANG = {
     drawer_preferences: 'Preferencias',
     drawer_kofi: 'Apoyar en Ko-fi ☕',
     group_movimientos_frecuentes: 'Movimientos frecuentes',
-    group_este_mes: 'Este mes',
+    group_ingresos_mes: 'Ingresos del mes',
+    group_presupuesto: 'Presupuesto',
     group_inversiones: 'Inversiones',
 
     // Header
@@ -749,7 +750,8 @@ const LANG = {
     drawer_preferences: 'Preferences',
     drawer_kofi: 'Support on Ko-fi ☕',
     group_movimientos_frecuentes: 'Frequent movements',
-    group_este_mes: 'This month',
+    group_ingresos_mes: 'Monthly income',
+    group_presupuesto: 'Budget',
     group_inversiones: 'Investments',
     hdr_sub: 'Transform your relationship with money',
     kpi_ingresos: 'Income',
@@ -1231,7 +1233,8 @@ const LANG = {
     drawer_preferences: 'Preferências',
     drawer_kofi: 'Apoiar no Ko-fi ☕',
     group_movimientos_frecuentes: 'Movimentos frequentes',
-    group_este_mes: 'Este mês',
+    group_ingresos_mes: 'Receitas do mês',
+    group_presupuesto: 'Orçamento',
     group_inversiones: 'Investimentos',
     hdr_sub: 'Transforme sua relação com o dinheiro',
     kpi_ingresos: 'Renda',
@@ -2401,6 +2404,40 @@ tr:last-child td { border: none; }
     <!-- CARGAR -->
     <div id="pg-cargar" class="page">
 
+      <div class="collapsible-group open" id="group-ingresos">
+        <button class="group-header" onclick="toggleGroup(this)">
+          <span>💵 <span data-i18n="group_ingresos_mes">Ingresos del mes</span></span>
+          <span class="group-chevron">▶</span>
+        </button>
+        <div class="group-content">
+      <div class="card">
+        <div class="card-title"><span data-i18n="card_sueldo">Sueldo del mes</span></div>
+        <button class="btn" onclick="toggleAgregarMes()" id="btn-agregar-mes" style="width:100%;margin-bottom:10px;font-size:13px;padding:10px;border-style:dashed;color:var(--text2)"><span data-i18n="btn_agregar_mes">+ Agregar mes</span></button>
+        <div id="agregar-mes-panel" style="display:none;margin-bottom:10px"></div>
+        <div class="field"><label data-i18n="lbl_mes">Mes</label><select id="s-mes" onchange="renderQuick()"></select></div>
+        <div class="row2">
+          <div class="field"><label data-i18n="lbl_sueldo_campo">Sueldo ($)</label><input type="number" id="s-sueldo" placeholder="0" inputmode="decimal"></div>
+          <div class="field"><label data-i18n="lbl_ahorro_campo">Ahorro ($)</label><input type="number" id="s-ahorro" placeholder="0" inputmode="decimal"></div>
+        </div>
+        <button class="btn btn-primary" onclick="guardarSueldo()" style="margin-bottom:16px"><span data-i18n="btn_guardar_sueldo">Guardar ingresos</span></button>
+
+        <!-- Otros ingresos -->
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Otros ingresos</div>
+          <div id="extras-list" style="margin-bottom:8px"></div>
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div class="field" style="flex:2;margin-bottom:0"><input type="text" id="s-extra-desc" placeholder="Descripción (ej: Freelance)" style="font-size:13px"></div>
+            <div class="field" style="flex:1;margin-bottom:0"><input type="number" id="s-extra-monto" placeholder="$" inputmode="decimal" style="font-size:13px"></div>
+            <button onclick="agregarExtra()" style="background:var(--teal);border:none;border-radius:var(--r-sm);color:#fff;font-size:18px;font-weight:600;width:36px;height:36px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div id="quick-summary" style="font-size:13px;color:var(--text2);text-align:center;padding:8px 0"><span data-i18n="lbl_quick_sel">Seleccioná un mes arriba</span></div>
+      </div>
+        </div>
+      </div>
+
       <div class="collapsible-group open" id="group-frecuentes">
         <button class="group-header" onclick="toggleGroup(this)">
           <span>💰 <span data-i18n="group_movimientos_frecuentes">Movimientos frecuentes</span></span>
@@ -2462,38 +2499,12 @@ tr:last-child td { border: none; }
         </div>
       </div>
 
-      <div class="collapsible-group" id="group-estemes">
+      <div class="collapsible-group" id="group-presupuesto">
         <button class="group-header" onclick="toggleGroup(this)">
-          <span>📅 <span data-i18n="group_este_mes">Este mes</span></span>
+          <span>🎯 <span data-i18n="group_presupuesto">Presupuesto</span></span>
           <span class="group-chevron">▶</span>
         </button>
         <div class="group-content">
-      <div class="card">
-        <div class="card-title"><span data-i18n="card_sueldo">Sueldo del mes</span></div>
-        <button class="btn" onclick="toggleAgregarMes()" id="btn-agregar-mes" style="width:100%;margin-bottom:10px;font-size:13px;padding:10px;border-style:dashed;color:var(--text2)"><span data-i18n="btn_agregar_mes">+ Agregar mes</span></button>
-        <div id="agregar-mes-panel" style="display:none;margin-bottom:10px"></div>
-        <div class="field"><label data-i18n="lbl_mes">Mes</label><select id="s-mes" onchange="renderQuick()"></select></div>
-        <div class="row2">
-          <div class="field"><label data-i18n="lbl_sueldo_campo">Sueldo ($)</label><input type="number" id="s-sueldo" placeholder="0" inputmode="decimal"></div>
-          <div class="field"><label data-i18n="lbl_ahorro_campo">Ahorro ($)</label><input type="number" id="s-ahorro" placeholder="0" inputmode="decimal"></div>
-        </div>
-        <button class="btn btn-primary" onclick="guardarSueldo()" style="margin-bottom:16px"><span data-i18n="btn_guardar_sueldo">Guardar ingresos</span></button>
-
-        <!-- Otros ingresos -->
-        <div style="margin-bottom:10px">
-          <div style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Otros ingresos</div>
-          <div id="extras-list" style="margin-bottom:8px"></div>
-          <div style="display:flex;gap:8px;align-items:flex-end">
-            <div class="field" style="flex:2;margin-bottom:0"><input type="text" id="s-extra-desc" placeholder="Descripción (ej: Freelance)" style="font-size:13px"></div>
-            <div class="field" style="flex:1;margin-bottom:0"><input type="number" id="s-extra-monto" placeholder="$" inputmode="decimal" style="font-size:13px"></div>
-            <button onclick="agregarExtra()" style="background:var(--teal);border:none;border-radius:var(--r-sm);color:#fff;font-size:18px;font-weight:600;width:36px;height:36px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-        <div id="quick-summary" style="font-size:13px;color:var(--text2);text-align:center;padding:8px 0"><span data-i18n="lbl_quick_sel">Seleccioná un mes arriba</span></div>
-      </div>
-
       <div class="card">
         <div class="card-title" style="color:var(--blue)"><span data-i18n="card_presupuesto">Presupuesto mensual</span></div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5" data-i18n="lbl_presupuesto_txt">Definí cuánto querés gastar por categoría este mes. Lo vas a ver comparado con el real en el Resumen.</div>
@@ -3143,7 +3154,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.22</div>
+    <div class="drawer-header-version">v9.23</div>
   </div>
 
   <div class="drawer-body">
@@ -3177,7 +3188,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.22</div>
+    <div class="drawer-footer-version">Martifin v9.23</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -4152,7 +4163,7 @@ function toggleGroup(headerEl) {
 }
 
 function resetGruposCargar() {
-  const defaults = {'group-frecuentes': true, 'group-estemes': false, 'group-inversiones': false};
+  const defaults = {'group-ingresos': true, 'group-frecuentes': true, 'group-presupuesto': false, 'group-inversiones': false};
   Object.entries(defaults).forEach(([id, abierto]) => {
     const group = document.getElementById(id);
     const content = group?.querySelector('.group-content');
