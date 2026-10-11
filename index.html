@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 /* ── GLOBAL AUTH VARS (must be first to avoid TDZ) ──────────────────────── */
-const MARTIFIN_VERSION = 'v9.24';
+const MARTIFIN_VERSION = 'v9.25';
 console.log('✅ Martifin ' + MARTIFIN_VERSION + ' loaded - supabaseClient init at top');
 var supabaseClient = null;
 var currentUser = null;
@@ -3154,7 +3154,7 @@ tr:last-child td { border: none; }
     </div>
     <img src="martifin-icon-192x192.png" alt="Martifin" style="width:36px;height:36px;border-radius:9px">
     <div class="drawer-header-title">Marti<span style="color:var(--teal)">fin</span></div>
-    <div class="drawer-header-version">v9.24</div>
+    <div class="drawer-header-version">v9.25</div>
   </div>
 
   <div class="drawer-body">
@@ -3188,7 +3188,7 @@ tr:last-child td { border: none; }
   </div>
 
   <div class="drawer-footer">
-    <div class="drawer-footer-version">Martifin v9.24</div>
+    <div class="drawer-footer-version">Martifin v9.25</div>
     <a class="drawer-footer-kofi" href="https://ko-fi.com/martifin" target="_blank" rel="noopener noreferrer" data-i18n="drawer_kofi">Apoyar en Ko-fi ☕</a>
   </div>
 </div>
@@ -6118,13 +6118,11 @@ function cerrarFilosofiaNoMostrar() {
   if(card) card.style.display = 'none';
 }
 
+// El panel ya no se abre solo al arrancar (tapaba el login, el onboarding y
+// los avisos de la nube): se abre solo desde la tarjeta del Resumen.
+// Acá queda únicamente ocultar esa tarjeta si eligieron "No mostrar de nuevo".
 function initFilosofia() {
   const hidden = localStorage.getItem('martifin_hide_filosofia');
-  const firstTime = !localStorage.getItem('martifin_filosofia_shown');
-  if(!hidden && firstTime) {
-    safeSet('martifin_filosofia_shown', '1');
-    setTimeout(abrirFilosofia, 1200);
-  }
   if(hidden) {
     const card = document.getElementById('inspiracion-card');
     if(card) card.style.display = 'none';
